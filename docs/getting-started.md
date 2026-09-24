@@ -6,7 +6,7 @@
 git clone https://github.com/timwhitez/ReVer_Pi.git
 cd ReVer_Pi
 python3 -m venv .venv && . .venv/bin/activate
-pip install -e .
+pip install -e '.[test]'            # '.[test]' adds pytest/pytest-asyncio for the local checks
 reverpi doctor                      # environment report; calls nothing
 cd pi && npm ci && npm run typecheck && cd ..
 ```
