@@ -12,7 +12,7 @@ The production Python/Pi sources remain the frozen RC7.1 lineage. S5 adds strict
 
 Use Python 3.12+ (the local validation used 3.13.5), Node 22.19+ and the supplied dependency locks. The Pi version is fixed to 0.84.2; do not silently substitute SoL-Pi's newer requirement.
 
-`python -m pip install -e .` installs the Python implementation. `cd pi && npm ci && npm run typecheck` installs/checks the Pi extension. Do not provide model secrets to CI.
+`python -m pip install -e .` installs the Python implementation. `cd pi && npm ci && npm run typecheck` installs/checks the Pi extension. Do not provide model secrets to any test run.
 
 Standalone assurance checks:
 
@@ -20,7 +20,15 @@ Standalone assurance checks:
 python -B -m pytest research/s5/tests/test_s5_contracts.py research/s5/tests/test_s5_statistics.py research/s5/tests/test_s5_assurance.py -q
 ```
 
-The full private S5 delivery supplies fixed development source snapshots and historical regression fixtures for all tests. They are deliberately not copied into this import. Full-repository pytest without those fixtures is not the CI contract. `research/s5/run.py census` requires the original S4 delivery in a separate local directory. It does not fetch evidence from GitHub or call a model.
+The full private S5 delivery supplies fixed development source snapshots and historical regression fixtures for all tests. They are deliberately not copied into this import. Full-repository pytest without those fixtures is not the local contract either. `research/s5/run.py census` requires the original S4 delivery in a separate local directory. It does not fetch evidence from GitHub or call a model.
+
+Verification is local-only; this repository has no CI workflow:
+
+```bash
+sh scripts/run_local_checks.sh
+```
+
+It runs the pytest suites present in the checkout and the Pi typecheck/tests when `pi/node_modules` exists, prints skip lines when it does not, and exits non-zero on any failure.
 
 ## Evidence and permissions
 
