@@ -1,0 +1,2271 @@
+{
+ "boundary_runs": 33,
+ "census_sha256_input": {
+  "complete_pairs": 15,
+  "deployed_runs": 10,
+  "eligible_runs": 27,
+  "paired_or_capture_runs": 76,
+  "raw_response_model_labels": {
+   "deepseek-flash": 641
+  },
+  "reported_tokens": 8202832,
+  "requests": 641,
+  "runs": 86,
+  "unique_source_groups": 38,
+  "unknown_attempts": 0
+ },
+ "comparable_both_arms": {
+  "extracted": {
+   "baselines": [
+    {
+     "arm": "full",
+     "correct": 14,
+     "cost_tokens": 1313508,
+     "failures": 3,
+     "runs": 17
+    },
+    {
+     "arm": "projected",
+     "correct": 12,
+     "cost_tokens": 1240753,
+     "failures": 5,
+     "runs": 17
+    }
+   ],
+   "frozen_rule": {
+    "all_full_cost_tokens": 1313508,
+    "cost_tokens": 1329748,
+    "failures": 3,
+    "projected_arm_tokens_on_selected": 394016,
+    "selected_runs": 5,
+    "threshold": 93641.0
+   },
+   "leave_one_source_out": {
+    "finite_thresholds_seen": [
+     95519,
+     95519,
+     93641,
+     95519,
+     95519,
+     95519,
+     95519,
+     95519,
+     95519,
+     96013,
+     95519,
+     95519,
+     95519,
+     95519
+    ],
+    "fitted_thresholds": [
+     93641,
+     95519,
+     96013
+    ],
+    "fitted_total_failures": 4,
+    "fitted_total_selected": 3,
+    "folds": [
+     {
+      "fitted_cost_tokens": 53014,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 53014,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "andialbrecht-sqlparse",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 23397,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 23397,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "benjaminp-six",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 280530,
+      "fitted_failures": 1,
+      "fitted_selected": 1,
+      "fitted_threshold": 93641,
+      "frozen_cost_tokens": 280530,
+      "frozen_failures": 1,
+      "frozen_selected": 1,
+      "held_out_group": "cpburnz-pathspec",
+      "test_runs": 2
+     },
+     {
+      "fitted_cost_tokens": 190429,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 190429,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "docutils-docutils",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 160402,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 59772,
+      "frozen_failures": 0,
+      "frozen_selected": 1,
+      "held_out_group": "frostming-tomlkit",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 28011,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 28011,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "mahmoud-boltons",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 435561,
+      "fitted_failures": 0,
+      "fitted_selected": 1,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 435561,
+      "frozen_failures": 0,
+      "frozen_selected": 1,
+      "held_out_group": "more-itertools",
+      "test_runs": 2
+     },
+     {
+      "fitted_cost_tokens": 53846,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 53846,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "pallets-click",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 29074,
+      "fitted_failures": 1,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 29074,
+      "frozen_failures": 1,
+      "frozen_selected": 0,
+      "held_out_group": "pyeclipse-cerberus",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 24481,
+      "fitted_failures": 1,
+      "fitted_selected": 0,
+      "fitted_threshold": 96013,
+      "frozen_cost_tokens": 18669,
+      "frozen_failures": 0,
+      "frozen_selected": 1,
+      "held_out_group": "pypa-packaging",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 25731,
+      "fitted_failures": 1,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 25731,
+      "frozen_failures": 1,
+      "frozen_selected": 0,
+      "held_out_group": "suor-funcy",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 13060,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 13060,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "theskumar-python-dotenv",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 86268,
+      "fitted_failures": 0,
+      "fitted_selected": 1,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 86268,
+      "frozen_failures": 0,
+      "frozen_selected": 1,
+      "held_out_group": "tox-dev-filelock",
+      "test_runs": 2
+     },
+     {
+      "fitted_cost_tokens": 32386,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 32386,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "urllib3-urllib3",
+      "test_runs": 1
+     }
+    ],
+    "folds_choosing_no_projection": 0,
+    "folds_held_out": 14,
+    "folds_reproducing_frozen_threshold": 1,
+    "frozen_total_failures": 3,
+    "frozen_total_selected": 5
+   },
+   "runs": 17,
+   "surface": [
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1240753,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 1240753,
+     "selected_runs": 17,
+     "threshold": 25110
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1228550,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 1215490,
+     "selected_runs": 16,
+     "threshold": 39668
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1200626,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 1164169,
+     "selected_runs": 15,
+     "threshold": 49128
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1192970,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 1130782,
+     "selected_runs": 14,
+     "threshold": 52266
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1133032,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 1042833,
+     "selected_runs": 13,
+     "threshold": 52968
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1118026,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 998753,
+     "selected_runs": 12,
+     "threshold": 56382
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1500564,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 995332,
+     "selected_runs": 11,
+     "threshold": 62102
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1473227,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 914149,
+     "selected_runs": 10,
+     "threshold": 62556
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1446618,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 855154,
+     "selected_runs": 9,
+     "threshold": 63576
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1464191,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 829826,
+     "selected_runs": 8,
+     "threshold": 72019
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1417885,
+     "failures": 3,
+     "projected_arm_tokens_on_selected": 593091,
+     "selected_runs": 7,
+     "threshold": 72397
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1347824,
+     "failures": 3,
+     "projected_arm_tokens_on_selected": 465106,
+     "selected_runs": 6,
+     "threshold": 89881
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1329748,
+     "failures": 3,
+     "projected_arm_tokens_on_selected": 394016,
+     "selected_runs": 5,
+     "threshold": 93641
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1430378,
+     "failures": 3,
+     "projected_arm_tokens_on_selected": 334244,
+     "selected_runs": 4,
+     "threshold": 94493
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1276951,
+     "failures": 2,
+     "projected_arm_tokens_on_selected": 96615,
+     "selected_runs": 3,
+     "threshold": 95519
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1282763,
+     "failures": 3,
+     "projected_arm_tokens_on_selected": 77946,
+     "selected_runs": 2,
+     "threshold": 96013
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1332162,
+     "failures": 3,
+     "projected_arm_tokens_on_selected": 49602,
+     "selected_runs": 1,
+     "threshold": 110836
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1313508,
+     "failures": 3,
+     "projected_arm_tokens_on_selected": 0,
+     "selected_runs": 0,
+     "threshold": Infinity
+    }
+   ]
+  },
+  "strict_v2": {
+   "baselines": [
+    {
+     "arm": "full",
+     "correct": 13,
+     "cost_tokens": 1313508,
+     "failures": 4,
+     "runs": 17
+    },
+    {
+     "arm": "projected",
+     "correct": 11,
+     "cost_tokens": 1240753,
+     "failures": 6,
+     "runs": 17
+    }
+   ],
+   "frozen_rule": {
+    "all_full_cost_tokens": 1313508,
+    "cost_tokens": 1329748,
+    "failures": 4,
+    "projected_arm_tokens_on_selected": 394016,
+    "selected_runs": 5,
+    "threshold": 93641.0
+   },
+   "leave_one_source_out": {
+    "finite_thresholds_seen": [
+     95519,
+     95519,
+     93641,
+     95519,
+     95519,
+     95519,
+     95519,
+     95519,
+     95519,
+     96013,
+     95519,
+     95519,
+     95519,
+     95519
+    ],
+    "fitted_thresholds": [
+     93641,
+     95519,
+     96013
+    ],
+    "fitted_total_failures": 5,
+    "fitted_total_selected": 3,
+    "folds": [
+     {
+      "fitted_cost_tokens": 53014,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 53014,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "andialbrecht-sqlparse",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 23397,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 23397,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "benjaminp-six",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 280530,
+      "fitted_failures": 1,
+      "fitted_selected": 1,
+      "fitted_threshold": 93641,
+      "frozen_cost_tokens": 280530,
+      "frozen_failures": 1,
+      "frozen_selected": 1,
+      "held_out_group": "cpburnz-pathspec",
+      "test_runs": 2
+     },
+     {
+      "fitted_cost_tokens": 190429,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 190429,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "docutils-docutils",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 160402,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 59772,
+      "frozen_failures": 0,
+      "frozen_selected": 1,
+      "held_out_group": "frostming-tomlkit",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 28011,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 28011,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "mahmoud-boltons",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 435561,
+      "fitted_failures": 0,
+      "fitted_selected": 1,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 435561,
+      "frozen_failures": 0,
+      "frozen_selected": 1,
+      "held_out_group": "more-itertools",
+      "test_runs": 2
+     },
+     {
+      "fitted_cost_tokens": 53846,
+      "fitted_failures": 1,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 53846,
+      "frozen_failures": 1,
+      "frozen_selected": 0,
+      "held_out_group": "pallets-click",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 29074,
+      "fitted_failures": 1,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 29074,
+      "frozen_failures": 1,
+      "frozen_selected": 0,
+      "held_out_group": "pyeclipse-cerberus",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 24481,
+      "fitted_failures": 1,
+      "fitted_selected": 0,
+      "fitted_threshold": 96013,
+      "frozen_cost_tokens": 18669,
+      "frozen_failures": 0,
+      "frozen_selected": 1,
+      "held_out_group": "pypa-packaging",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 25731,
+      "fitted_failures": 1,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 25731,
+      "frozen_failures": 1,
+      "frozen_selected": 0,
+      "held_out_group": "suor-funcy",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 13060,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 13060,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "theskumar-python-dotenv",
+      "test_runs": 1
+     },
+     {
+      "fitted_cost_tokens": 86268,
+      "fitted_failures": 0,
+      "fitted_selected": 1,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 86268,
+      "frozen_failures": 0,
+      "frozen_selected": 1,
+      "held_out_group": "tox-dev-filelock",
+      "test_runs": 2
+     },
+     {
+      "fitted_cost_tokens": 32386,
+      "fitted_failures": 0,
+      "fitted_selected": 0,
+      "fitted_threshold": 95519,
+      "frozen_cost_tokens": 32386,
+      "frozen_failures": 0,
+      "frozen_selected": 0,
+      "held_out_group": "urllib3-urllib3",
+      "test_runs": 1
+     }
+    ],
+    "folds_choosing_no_projection": 0,
+    "folds_held_out": 14,
+    "folds_reproducing_frozen_threshold": 1,
+    "frozen_total_failures": 4,
+    "frozen_total_selected": 5
+   },
+   "runs": 17,
+   "surface": [
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1240753,
+     "failures": 6,
+     "projected_arm_tokens_on_selected": 1240753,
+     "selected_runs": 17,
+     "threshold": 25110
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1228550,
+     "failures": 6,
+     "projected_arm_tokens_on_selected": 1215490,
+     "selected_runs": 16,
+     "threshold": 39668
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1200626,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 1164169,
+     "selected_runs": 15,
+     "threshold": 49128
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1192970,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 1130782,
+     "selected_runs": 14,
+     "threshold": 52266
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1133032,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 1042833,
+     "selected_runs": 13,
+     "threshold": 52968
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1118026,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 998753,
+     "selected_runs": 12,
+     "threshold": 56382
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1500564,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 995332,
+     "selected_runs": 11,
+     "threshold": 62102
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1473227,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 914149,
+     "selected_runs": 10,
+     "threshold": 62556
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1446618,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 855154,
+     "selected_runs": 9,
+     "threshold": 63576
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1464191,
+     "failures": 5,
+     "projected_arm_tokens_on_selected": 829826,
+     "selected_runs": 8,
+     "threshold": 72019
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1417885,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 593091,
+     "selected_runs": 7,
+     "threshold": 72397
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1347824,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 465106,
+     "selected_runs": 6,
+     "threshold": 89881
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1329748,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 394016,
+     "selected_runs": 5,
+     "threshold": 93641
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1430378,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 334244,
+     "selected_runs": 4,
+     "threshold": 94493
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1276951,
+     "failures": 3,
+     "projected_arm_tokens_on_selected": 96615,
+     "selected_runs": 3,
+     "threshold": 95519
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1282763,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 77946,
+     "selected_runs": 2,
+     "threshold": 96013
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1332162,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 49602,
+     "selected_runs": 1,
+     "threshold": 110836
+    },
+    {
+     "all_full_cost_tokens": 1313508,
+     "cost_tokens": 1313508,
+     "failures": 4,
+     "projected_arm_tokens_on_selected": 0,
+     "selected_runs": 0,
+     "threshold": Infinity
+    }
+   ]
+  }
+ },
+ "counterfactuals": {
+  "extracted": [
+   {
+    "contract": "extracted",
+    "correct": 17,
+    "failed_at_cap": 6,
+    "observed_runs": 23,
+    "rule": "always_full",
+    "tokens_in_observed_runs": 2219782,
+    "unobserved_runs": 10
+   },
+   {
+    "contract": "extracted",
+    "correct": 14,
+    "failed_at_cap": 13,
+    "observed_runs": 27,
+    "rule": "always_projected",
+    "tokens_in_observed_runs": 3226786,
+    "unobserved_runs": 6
+   }
+  ],
+  "strict_v2": [
+   {
+    "contract": "strict_v2",
+    "correct": 16,
+    "failed_at_cap": 7,
+    "observed_runs": 23,
+    "rule": "always_full",
+    "tokens_in_observed_runs": 2219782,
+    "unobserved_runs": 10
+   },
+   {
+    "contract": "strict_v2",
+    "correct": 13,
+    "failed_at_cap": 14,
+    "observed_runs": 27,
+    "rule": "always_projected",
+    "tokens_in_observed_runs": 3226786,
+    "unobserved_runs": 6
+   }
+  ]
+ },
+ "frozen_rule": {
+  "action": "projected when true, else full",
+  "direction": "ge",
+  "feature": "history_bytes",
+  "threshold": 93641.0
+ },
+ "rule_rows": {
+  "extracted": [
+   {
+    "bucket": "s4b_paid_runs",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 53846,
+    "history_bytes": 62102,
+    "other_outcome": "correct",
+    "source_group": "pallets-click",
+    "summary_state": "paired_complete",
+    "task_id": "click-parameters",
+    "verdict": "success"
+   },
+   {
+    "bucket": "s4b_paid_runs",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 18669,
+    "history_bytes": 95519,
+    "other_outcome": "wrong",
+    "source_group": "pypa-packaging",
+    "summary_state": "paired_complete",
+    "task_id": "packaging-compatibility",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "absent",
+    "chosen_tokens": 0,
+    "history_bytes": 58749,
+    "other_outcome": "capped",
+    "source_group": "hynek-attrs",
+    "summary_state": "stopped",
+    "task_id": "attrs-define",
+    "verdict": "unobserved"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 28011,
+    "history_bytes": 52266,
+    "other_outcome": "correct",
+    "source_group": "mahmoud-boltons",
+    "summary_state": "paired_complete",
+    "task_id": "boltons-indexedset",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "wrong",
+    "chosen_tokens": 29074,
+    "history_bytes": 52968,
+    "other_outcome": "wrong",
+    "source_group": "pyeclipse-cerberus",
+    "summary_state": "paired_complete",
+    "task_id": "cerberus-errors",
+    "verdict": "both_failed"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 190429,
+    "history_bytes": 72019,
+    "other_outcome": "capped",
+    "source_group": "docutils-docutils",
+    "summary_state": "stopped",
+    "task_id": "docutils-nodes",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 203824,
+    "history_bytes": 154876,
+    "other_outcome": "absent",
+    "source_group": "docutils-docutils",
+    "summary_state": "stopped",
+    "task_id": "docutils-tree",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 13060,
+    "history_bytes": 25110,
+    "other_outcome": "correct",
+    "source_group": "theskumar-python-dotenv",
+    "summary_state": "paired_complete",
+    "task_id": "dotenv-stream",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 57924,
+    "history_bytes": 72397,
+    "other_outcome": "correct",
+    "source_group": "tox-dev-filelock",
+    "summary_state": "paired_complete",
+    "task_id": "filelock-basics",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 28344,
+    "history_bytes": 96013,
+    "other_outcome": "correct",
+    "source_group": "tox-dev-filelock",
+    "summary_state": "paired_complete",
+    "task_id": "filelock-contention",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "wrong",
+    "chosen_tokens": 25731,
+    "history_bytes": 49128,
+    "other_outcome": "wrong",
+    "source_group": "suor-funcy",
+    "summary_state": "paired_complete",
+    "task_id": "funcy-colls",
+    "verdict": "both_failed"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 424821,
+    "history_bytes": 130201,
+    "other_outcome": "absent",
+    "source_group": "python-markdown",
+    "summary_state": "stopped",
+    "task_id": "markdown-extensions",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "absent",
+    "chosen_tokens": 0,
+    "history_bytes": 51348,
+    "other_outcome": "capped",
+    "source_group": "marshmallow-code-marshmallow",
+    "summary_state": "stopped",
+    "task_id": "marshmallow-fields",
+    "verdict": "unobserved"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 385959,
+    "history_bytes": 56382,
+    "other_outcome": "correct",
+    "source_group": "more-itertools",
+    "summary_state": "paired_complete",
+    "task_id": "more-itertools-recipes",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 49602,
+    "history_bytes": 110836,
+    "other_outcome": "correct",
+    "source_group": "more-itertools",
+    "summary_state": "paired_complete",
+    "task_id": "more-itertools-window",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 42901,
+    "history_bytes": 63576,
+    "other_outcome": "correct",
+    "source_group": "cpburnz-pathspec",
+    "summary_state": "paired_complete",
+    "task_id": "pathspec-match",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 237629,
+    "history_bytes": 94493,
+    "other_outcome": "correct",
+    "source_group": "cpburnz-pathspec",
+    "summary_state": "stopped",
+    "task_id": "pathspec-util",
+    "verdict": "confirmed_harm"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "absent",
+    "chosen_tokens": 0,
+    "history_bytes": 81100,
+    "other_outcome": "capped",
+    "source_group": "pyparsing-pyparsing",
+    "summary_state": "stopped",
+    "task_id": "pyparsing-helpers",
+    "verdict": "unobserved"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 216161,
+    "history_bytes": 45227,
+    "other_outcome": "absent",
+    "source_group": "pyparsing-pyparsing",
+    "summary_state": "stopped",
+    "task_id": "pyparsing-parse",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 278186,
+    "history_bytes": 62360,
+    "other_outcome": "absent",
+    "source_group": "textualize-rich",
+    "summary_state": "stopped",
+    "task_id": "rich-table",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 23397,
+    "history_bytes": 39668,
+    "other_outcome": "wrong",
+    "source_group": "benjaminp-six",
+    "summary_state": "paired_complete",
+    "task_id": "six-moves",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 224615,
+    "history_bytes": 48268,
+    "other_outcome": "absent",
+    "source_group": "sqlalchemy-sqlalchemy",
+    "summary_state": "stopped",
+    "task_id": "sqlalchemy-core",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 53014,
+    "history_bytes": 89881,
+    "other_outcome": "correct",
+    "source_group": "andialbrecht-sqlparse",
+    "summary_state": "paired_complete",
+    "task_id": "sqlparse-grouping",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 194454,
+    "history_bytes": 124625,
+    "other_outcome": "absent",
+    "source_group": "astanin-python-tabulate",
+    "summary_state": "stopped",
+    "task_id": "tabulate-formats",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 59772,
+    "history_bytes": 93641,
+    "other_outcome": "correct",
+    "source_group": "frostming-tomlkit",
+    "summary_state": "paired_complete",
+    "task_id": "tomlkit-datetimes",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "absent",
+    "chosen_tokens": 0,
+    "history_bytes": 64489,
+    "other_outcome": "capped",
+    "source_group": "frostming-tomlkit",
+    "summary_state": "stopped",
+    "task_id": "tomlkit-roundtrip",
+    "verdict": "unobserved"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 32386,
+    "history_bytes": 62556,
+    "other_outcome": "correct",
+    "source_group": "urllib3-urllib3",
+    "summary_state": "paired_complete",
+    "task_id": "urllib3-headers",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 45400,
+    "history_bytes": 77200,
+    "other_outcome": "absent",
+    "source_group": "tox-dev-filelock",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "filelock-basics",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 160784,
+    "history_bytes": 123601,
+    "other_outcome": "absent",
+    "source_group": "tox-dev-filelock",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "filelock-contention",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 39149,
+    "history_bytes": 110194,
+    "other_outcome": "absent",
+    "source_group": "more-itertools",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "more-itertools-recipes",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 218839,
+    "history_bytes": 97045,
+    "other_outcome": "absent",
+    "source_group": "cpburnz-pathspec",
+    "summary_state": "stopped",
+    "task_id": "pathspec-match",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 112879,
+    "history_bytes": 64817,
+    "other_outcome": "absent",
+    "source_group": "andialbrecht-sqlparse",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "sqlparse-grouping",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 29033,
+    "history_bytes": 54818,
+    "other_outcome": "absent",
+    "source_group": "urllib3-urllib3",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "urllib3-headers",
+    "verdict": "success"
+   }
+  ],
+  "strict_v2": [
+   {
+    "bucket": "s4b_paid_runs",
+    "chosen_arm": "full",
+    "chosen_outcome": "wrong",
+    "chosen_tokens": 53846,
+    "history_bytes": 62102,
+    "other_outcome": "wrong",
+    "source_group": "pallets-click",
+    "summary_state": "paired_complete",
+    "task_id": "click-parameters",
+    "verdict": "both_failed"
+   },
+   {
+    "bucket": "s4b_paid_runs",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 18669,
+    "history_bytes": 95519,
+    "other_outcome": "wrong",
+    "source_group": "pypa-packaging",
+    "summary_state": "paired_complete",
+    "task_id": "packaging-compatibility",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "absent",
+    "chosen_tokens": 0,
+    "history_bytes": 58749,
+    "other_outcome": "capped",
+    "source_group": "hynek-attrs",
+    "summary_state": "stopped",
+    "task_id": "attrs-define",
+    "verdict": "unobserved"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 28011,
+    "history_bytes": 52266,
+    "other_outcome": "correct",
+    "source_group": "mahmoud-boltons",
+    "summary_state": "paired_complete",
+    "task_id": "boltons-indexedset",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "wrong",
+    "chosen_tokens": 29074,
+    "history_bytes": 52968,
+    "other_outcome": "wrong",
+    "source_group": "pyeclipse-cerberus",
+    "summary_state": "paired_complete",
+    "task_id": "cerberus-errors",
+    "verdict": "both_failed"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 190429,
+    "history_bytes": 72019,
+    "other_outcome": "capped",
+    "source_group": "docutils-docutils",
+    "summary_state": "stopped",
+    "task_id": "docutils-nodes",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 203824,
+    "history_bytes": 154876,
+    "other_outcome": "absent",
+    "source_group": "docutils-docutils",
+    "summary_state": "stopped",
+    "task_id": "docutils-tree",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 13060,
+    "history_bytes": 25110,
+    "other_outcome": "correct",
+    "source_group": "theskumar-python-dotenv",
+    "summary_state": "paired_complete",
+    "task_id": "dotenv-stream",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 57924,
+    "history_bytes": 72397,
+    "other_outcome": "correct",
+    "source_group": "tox-dev-filelock",
+    "summary_state": "paired_complete",
+    "task_id": "filelock-basics",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 28344,
+    "history_bytes": 96013,
+    "other_outcome": "correct",
+    "source_group": "tox-dev-filelock",
+    "summary_state": "paired_complete",
+    "task_id": "filelock-contention",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "wrong",
+    "chosen_tokens": 25731,
+    "history_bytes": 49128,
+    "other_outcome": "wrong",
+    "source_group": "suor-funcy",
+    "summary_state": "paired_complete",
+    "task_id": "funcy-colls",
+    "verdict": "both_failed"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 424821,
+    "history_bytes": 130201,
+    "other_outcome": "absent",
+    "source_group": "python-markdown",
+    "summary_state": "stopped",
+    "task_id": "markdown-extensions",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "absent",
+    "chosen_tokens": 0,
+    "history_bytes": 51348,
+    "other_outcome": "capped",
+    "source_group": "marshmallow-code-marshmallow",
+    "summary_state": "stopped",
+    "task_id": "marshmallow-fields",
+    "verdict": "unobserved"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 385959,
+    "history_bytes": 56382,
+    "other_outcome": "correct",
+    "source_group": "more-itertools",
+    "summary_state": "paired_complete",
+    "task_id": "more-itertools-recipes",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 49602,
+    "history_bytes": 110836,
+    "other_outcome": "correct",
+    "source_group": "more-itertools",
+    "summary_state": "paired_complete",
+    "task_id": "more-itertools-window",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 42901,
+    "history_bytes": 63576,
+    "other_outcome": "correct",
+    "source_group": "cpburnz-pathspec",
+    "summary_state": "paired_complete",
+    "task_id": "pathspec-match",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 237629,
+    "history_bytes": 94493,
+    "other_outcome": "correct",
+    "source_group": "cpburnz-pathspec",
+    "summary_state": "stopped",
+    "task_id": "pathspec-util",
+    "verdict": "confirmed_harm"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "absent",
+    "chosen_tokens": 0,
+    "history_bytes": 81100,
+    "other_outcome": "capped",
+    "source_group": "pyparsing-pyparsing",
+    "summary_state": "stopped",
+    "task_id": "pyparsing-helpers",
+    "verdict": "unobserved"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 216161,
+    "history_bytes": 45227,
+    "other_outcome": "absent",
+    "source_group": "pyparsing-pyparsing",
+    "summary_state": "stopped",
+    "task_id": "pyparsing-parse",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 278186,
+    "history_bytes": 62360,
+    "other_outcome": "absent",
+    "source_group": "textualize-rich",
+    "summary_state": "stopped",
+    "task_id": "rich-table",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 23397,
+    "history_bytes": 39668,
+    "other_outcome": "wrong",
+    "source_group": "benjaminp-six",
+    "summary_state": "paired_complete",
+    "task_id": "six-moves",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 224615,
+    "history_bytes": 48268,
+    "other_outcome": "absent",
+    "source_group": "sqlalchemy-sqlalchemy",
+    "summary_state": "stopped",
+    "task_id": "sqlalchemy-core",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 53014,
+    "history_bytes": 89881,
+    "other_outcome": "correct",
+    "source_group": "andialbrecht-sqlparse",
+    "summary_state": "paired_complete",
+    "task_id": "sqlparse-grouping",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 194454,
+    "history_bytes": 124625,
+    "other_outcome": "absent",
+    "source_group": "astanin-python-tabulate",
+    "summary_state": "stopped",
+    "task_id": "tabulate-formats",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 59772,
+    "history_bytes": 93641,
+    "other_outcome": "correct",
+    "source_group": "frostming-tomlkit",
+    "summary_state": "paired_complete",
+    "task_id": "tomlkit-datetimes",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "absent",
+    "chosen_tokens": 0,
+    "history_bytes": 64489,
+    "other_outcome": "capped",
+    "source_group": "frostming-tomlkit",
+    "summary_state": "stopped",
+    "task_id": "tomlkit-roundtrip",
+    "verdict": "unobserved"
+   },
+   {
+    "bucket": "cumulative_runs/paid",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 32386,
+    "history_bytes": 62556,
+    "other_outcome": "correct",
+    "source_group": "urllib3-urllib3",
+    "summary_state": "paired_complete",
+    "task_id": "urllib3-headers",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 45400,
+    "history_bytes": 77200,
+    "other_outcome": "absent",
+    "source_group": "tox-dev-filelock",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "filelock-basics",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 160784,
+    "history_bytes": 123601,
+    "other_outcome": "absent",
+    "source_group": "tox-dev-filelock",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "filelock-contention",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "projected",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 39149,
+    "history_bytes": 110194,
+    "other_outcome": "absent",
+    "source_group": "more-itertools",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "more-itertools-recipes",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "projected",
+    "chosen_outcome": "capped",
+    "chosen_tokens": 218839,
+    "history_bytes": 97045,
+    "other_outcome": "absent",
+    "source_group": "cpburnz-pathspec",
+    "summary_state": "stopped",
+    "task_id": "pathspec-match",
+    "verdict": "unresolved_failure"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 112879,
+    "history_bytes": 64817,
+    "other_outcome": "absent",
+    "source_group": "andialbrecht-sqlparse",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "sqlparse-grouping",
+    "verdict": "success"
+   },
+   {
+    "bucket": "cumulative_runs/deployed",
+    "chosen_arm": "full",
+    "chosen_outcome": "correct",
+    "chosen_tokens": 29033,
+    "history_bytes": 54818,
+    "other_outcome": "absent",
+    "source_group": "urllib3-urllib3",
+    "summary_state": "deployed_single_arm_complete",
+    "task_id": "urllib3-headers",
+    "verdict": "success"
+   }
+  ]
+ },
+ "schema": "reverpi.s5b.dev-reanalysis.v1",
+ "scope": "development re-analysis of all submitted runs that reached a sealed boundary; not a sample of a natural source population and not a validation frame",
+ "single_arm_runs": 6,
+ "source_groups": [
+  "andialbrecht-sqlparse",
+  "astanin-python-tabulate",
+  "benjaminp-six",
+  "cpburnz-pathspec",
+  "docutils-docutils",
+  "frostming-tomlkit",
+  "hynek-attrs",
+  "mahmoud-boltons",
+  "marshmallow-code-marshmallow",
+  "more-itertools",
+  "pallets-click",
+  "pyeclipse-cerberus",
+  "pypa-packaging",
+  "pyparsing-pyparsing",
+  "python-markdown",
+  "sqlalchemy-sqlalchemy",
+  "suor-funcy",
+  "textualize-rich",
+  "theskumar-python-dotenv",
+  "tox-dev-filelock",
+  "urllib3-urllib3"
+ ],
+ "summaries": {
+  "extracted": {
+   "chosen_full": 22,
+   "chosen_projected": 11,
+   "confirmed_harm_groups": [
+    "cpburnz-pathspec"
+   ],
+   "confirmed_harm_runs": [
+    "pathspec-util"
+   ],
+   "contract": "extracted",
+   "runs": 33,
+   "tokens_spent_on_rule_choice": 3477893,
+   "tokens_spent_projecting": 1635887,
+   "unresolved_groups": [
+    "astanin-python-tabulate",
+    "cpburnz-pathspec",
+    "docutils-docutils",
+    "pyparsing-pyparsing",
+    "python-markdown",
+    "sqlalchemy-sqlalchemy",
+    "textualize-rich"
+   ],
+   "verdicts": {
+    "both_failed": 2,
+    "confirmed_harm": 1,
+    "success": 19,
+    "unobserved": 4,
+    "unresolved_failure": 7
+   }
+  },
+  "strict_v2": {
+   "chosen_full": 22,
+   "chosen_projected": 11,
+   "confirmed_harm_groups": [
+    "cpburnz-pathspec"
+   ],
+   "confirmed_harm_runs": [
+    "pathspec-util"
+   ],
+   "contract": "strict_v2",
+   "runs": 33,
+   "tokens_spent_on_rule_choice": 3477893,
+   "tokens_spent_projecting": 1635887,
+   "unresolved_groups": [
+    "astanin-python-tabulate",
+    "cpburnz-pathspec",
+    "docutils-docutils",
+    "pyparsing-pyparsing",
+    "python-markdown",
+    "sqlalchemy-sqlalchemy",
+    "textualize-rich"
+   ],
+   "verdicts": {
+    "both_failed": 3,
+    "confirmed_harm": 1,
+    "success": 18,
+    "unobserved": 4,
+    "unresolved_failure": 7
+   }
+  }
+ },
+ "threshold_curves": {
+  "extracted": [
+   {
+    "confirmed_selected_harm": 3,
+    "projected_correct": 14,
+    "projected_failed_at_cap": 13,
+    "projected_tokens_on_selected": 3226786,
+    "projected_unobserved": 6,
+    "selected": 33,
+    "threshold": 25110
+   },
+   {
+    "confirmed_selected_harm": 3,
+    "projected_correct": 13,
+    "projected_failed_at_cap": 13,
+    "projected_tokens_on_selected": 3201523,
+    "projected_unobserved": 6,
+    "selected": 32,
+    "threshold": 39668
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 13,
+    "projected_failed_at_cap": 12,
+    "projected_tokens_on_selected": 3150202,
+    "projected_unobserved": 6,
+    "selected": 31,
+    "threshold": 45227
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 13,
+    "projected_failed_at_cap": 12,
+    "projected_tokens_on_selected": 3150202,
+    "projected_unobserved": 5,
+    "selected": 30,
+    "threshold": 48268
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 13,
+    "projected_failed_at_cap": 12,
+    "projected_tokens_on_selected": 3150202,
+    "projected_unobserved": 4,
+    "selected": 29,
+    "threshold": 49128
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 13,
+    "projected_failed_at_cap": 11,
+    "projected_tokens_on_selected": 3116815,
+    "projected_unobserved": 4,
+    "selected": 28,
+    "threshold": 51348
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 13,
+    "projected_failed_at_cap": 10,
+    "projected_tokens_on_selected": 2925884,
+    "projected_unobserved": 4,
+    "selected": 27,
+    "threshold": 52266
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 10,
+    "projected_tokens_on_selected": 2837935,
+    "projected_unobserved": 4,
+    "selected": 26,
+    "threshold": 52968
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 9,
+    "projected_tokens_on_selected": 2793855,
+    "projected_unobserved": 4,
+    "selected": 25,
+    "threshold": 54818
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 9,
+    "projected_tokens_on_selected": 2793855,
+    "projected_unobserved": 3,
+    "selected": 24,
+    "threshold": 56382
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 11,
+    "projected_failed_at_cap": 9,
+    "projected_tokens_on_selected": 2790434,
+    "projected_unobserved": 3,
+    "selected": 23,
+    "threshold": 58749
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 11,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2646676,
+    "projected_unobserved": 3,
+    "selected": 22,
+    "threshold": 62102
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 10,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2565493,
+    "projected_unobserved": 3,
+    "selected": 21,
+    "threshold": 62360
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 10,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2565493,
+    "projected_unobserved": 2,
+    "selected": 20,
+    "threshold": 62556
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 9,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2506498,
+    "projected_unobserved": 2,
+    "selected": 19,
+    "threshold": 63576
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 8,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2481170,
+    "projected_unobserved": 2,
+    "selected": 18,
+    "threshold": 64489
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 8,
+    "projected_failed_at_cap": 7,
+    "projected_tokens_on_selected": 2259671,
+    "projected_unobserved": 2,
+    "selected": 17,
+    "threshold": 64817
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 8,
+    "projected_failed_at_cap": 7,
+    "projected_tokens_on_selected": 2259671,
+    "projected_unobserved": 1,
+    "selected": 16,
+    "threshold": 72019
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 8,
+    "projected_failed_at_cap": 6,
+    "projected_tokens_on_selected": 2022936,
+    "projected_unobserved": 1,
+    "selected": 15,
+    "threshold": 72397
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 7,
+    "projected_failed_at_cap": 6,
+    "projected_tokens_on_selected": 1894951,
+    "projected_unobserved": 1,
+    "selected": 14,
+    "threshold": 77200
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 7,
+    "projected_failed_at_cap": 6,
+    "projected_tokens_on_selected": 1894951,
+    "projected_unobserved": 0,
+    "selected": 13,
+    "threshold": 81100
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 7,
+    "projected_failed_at_cap": 5,
+    "projected_tokens_on_selected": 1706977,
+    "projected_unobserved": 0,
+    "selected": 12,
+    "threshold": 89881
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 6,
+    "projected_failed_at_cap": 5,
+    "projected_tokens_on_selected": 1635887,
+    "projected_unobserved": 0,
+    "selected": 11,
+    "threshold": 93641
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 5,
+    "projected_failed_at_cap": 5,
+    "projected_tokens_on_selected": 1576115,
+    "projected_unobserved": 0,
+    "selected": 10,
+    "threshold": 94493
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 5,
+    "projected_failed_at_cap": 4,
+    "projected_tokens_on_selected": 1338486,
+    "projected_unobserved": 0,
+    "selected": 9,
+    "threshold": 95519
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 4,
+    "projected_failed_at_cap": 4,
+    "projected_tokens_on_selected": 1319817,
+    "projected_unobserved": 0,
+    "selected": 8,
+    "threshold": 96013
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 3,
+    "projected_failed_at_cap": 4,
+    "projected_tokens_on_selected": 1291473,
+    "projected_unobserved": 0,
+    "selected": 7,
+    "threshold": 97045
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 3,
+    "projected_failed_at_cap": 3,
+    "projected_tokens_on_selected": 1072634,
+    "projected_unobserved": 0,
+    "selected": 6,
+    "threshold": 110194
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 2,
+    "projected_failed_at_cap": 3,
+    "projected_tokens_on_selected": 1033485,
+    "projected_unobserved": 0,
+    "selected": 5,
+    "threshold": 110836
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 1,
+    "projected_failed_at_cap": 3,
+    "projected_tokens_on_selected": 983883,
+    "projected_unobserved": 0,
+    "selected": 4,
+    "threshold": 123601
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 0,
+    "projected_failed_at_cap": 3,
+    "projected_tokens_on_selected": 823099,
+    "projected_unobserved": 0,
+    "selected": 3,
+    "threshold": 124625
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 0,
+    "projected_failed_at_cap": 2,
+    "projected_tokens_on_selected": 628645,
+    "projected_unobserved": 0,
+    "selected": 2,
+    "threshold": 130201
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 0,
+    "projected_failed_at_cap": 1,
+    "projected_tokens_on_selected": 203824,
+    "projected_unobserved": 0,
+    "selected": 1,
+    "threshold": 154876
+   }
+  ],
+  "strict_v2": [
+   {
+    "confirmed_selected_harm": 3,
+    "projected_correct": 13,
+    "projected_failed_at_cap": 14,
+    "projected_tokens_on_selected": 3226786,
+    "projected_unobserved": 6,
+    "selected": 33,
+    "threshold": 25110
+   },
+   {
+    "confirmed_selected_harm": 3,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 14,
+    "projected_tokens_on_selected": 3201523,
+    "projected_unobserved": 6,
+    "selected": 32,
+    "threshold": 39668
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 13,
+    "projected_tokens_on_selected": 3150202,
+    "projected_unobserved": 6,
+    "selected": 31,
+    "threshold": 45227
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 13,
+    "projected_tokens_on_selected": 3150202,
+    "projected_unobserved": 5,
+    "selected": 30,
+    "threshold": 48268
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 13,
+    "projected_tokens_on_selected": 3150202,
+    "projected_unobserved": 4,
+    "selected": 29,
+    "threshold": 49128
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 12,
+    "projected_tokens_on_selected": 3116815,
+    "projected_unobserved": 4,
+    "selected": 28,
+    "threshold": 51348
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 12,
+    "projected_failed_at_cap": 11,
+    "projected_tokens_on_selected": 2925884,
+    "projected_unobserved": 4,
+    "selected": 27,
+    "threshold": 52266
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 11,
+    "projected_failed_at_cap": 11,
+    "projected_tokens_on_selected": 2837935,
+    "projected_unobserved": 4,
+    "selected": 26,
+    "threshold": 52968
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 11,
+    "projected_failed_at_cap": 10,
+    "projected_tokens_on_selected": 2793855,
+    "projected_unobserved": 4,
+    "selected": 25,
+    "threshold": 54818
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 11,
+    "projected_failed_at_cap": 10,
+    "projected_tokens_on_selected": 2793855,
+    "projected_unobserved": 3,
+    "selected": 24,
+    "threshold": 56382
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 10,
+    "projected_failed_at_cap": 10,
+    "projected_tokens_on_selected": 2790434,
+    "projected_unobserved": 3,
+    "selected": 23,
+    "threshold": 58749
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 10,
+    "projected_failed_at_cap": 9,
+    "projected_tokens_on_selected": 2646676,
+    "projected_unobserved": 3,
+    "selected": 22,
+    "threshold": 62102
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 10,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2565493,
+    "projected_unobserved": 3,
+    "selected": 21,
+    "threshold": 62360
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 10,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2565493,
+    "projected_unobserved": 2,
+    "selected": 20,
+    "threshold": 62556
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 9,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2506498,
+    "projected_unobserved": 2,
+    "selected": 19,
+    "threshold": 63576
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 8,
+    "projected_failed_at_cap": 8,
+    "projected_tokens_on_selected": 2481170,
+    "projected_unobserved": 2,
+    "selected": 18,
+    "threshold": 64489
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 8,
+    "projected_failed_at_cap": 7,
+    "projected_tokens_on_selected": 2259671,
+    "projected_unobserved": 2,
+    "selected": 17,
+    "threshold": 64817
+   },
+   {
+    "confirmed_selected_harm": 2,
+    "projected_correct": 8,
+    "projected_failed_at_cap": 7,
+    "projected_tokens_on_selected": 2259671,
+    "projected_unobserved": 1,
+    "selected": 16,
+    "threshold": 72019
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 8,
+    "projected_failed_at_cap": 6,
+    "projected_tokens_on_selected": 2022936,
+    "projected_unobserved": 1,
+    "selected": 15,
+    "threshold": 72397
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 7,
+    "projected_failed_at_cap": 6,
+    "projected_tokens_on_selected": 1894951,
+    "projected_unobserved": 1,
+    "selected": 14,
+    "threshold": 77200
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 7,
+    "projected_failed_at_cap": 6,
+    "projected_tokens_on_selected": 1894951,
+    "projected_unobserved": 0,
+    "selected": 13,
+    "threshold": 81100
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 7,
+    "projected_failed_at_cap": 5,
+    "projected_tokens_on_selected": 1706977,
+    "projected_unobserved": 0,
+    "selected": 12,
+    "threshold": 89881
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 6,
+    "projected_failed_at_cap": 5,
+    "projected_tokens_on_selected": 1635887,
+    "projected_unobserved": 0,
+    "selected": 11,
+    "threshold": 93641
+   },
+   {
+    "confirmed_selected_harm": 1,
+    "projected_correct": 5,
+    "projected_failed_at_cap": 5,
+    "projected_tokens_on_selected": 1576115,
+    "projected_unobserved": 0,
+    "selected": 10,
+    "threshold": 94493
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 5,
+    "projected_failed_at_cap": 4,
+    "projected_tokens_on_selected": 1338486,
+    "projected_unobserved": 0,
+    "selected": 9,
+    "threshold": 95519
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 4,
+    "projected_failed_at_cap": 4,
+    "projected_tokens_on_selected": 1319817,
+    "projected_unobserved": 0,
+    "selected": 8,
+    "threshold": 96013
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 3,
+    "projected_failed_at_cap": 4,
+    "projected_tokens_on_selected": 1291473,
+    "projected_unobserved": 0,
+    "selected": 7,
+    "threshold": 97045
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 3,
+    "projected_failed_at_cap": 3,
+    "projected_tokens_on_selected": 1072634,
+    "projected_unobserved": 0,
+    "selected": 6,
+    "threshold": 110194
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 2,
+    "projected_failed_at_cap": 3,
+    "projected_tokens_on_selected": 1033485,
+    "projected_unobserved": 0,
+    "selected": 5,
+    "threshold": 110836
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 1,
+    "projected_failed_at_cap": 3,
+    "projected_tokens_on_selected": 983883,
+    "projected_unobserved": 0,
+    "selected": 4,
+    "threshold": 123601
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 0,
+    "projected_failed_at_cap": 3,
+    "projected_tokens_on_selected": 823099,
+    "projected_unobserved": 0,
+    "selected": 3,
+    "threshold": 124625
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 0,
+    "projected_failed_at_cap": 2,
+    "projected_tokens_on_selected": 628645,
+    "projected_unobserved": 0,
+    "selected": 2,
+    "threshold": 130201
+   },
+   {
+    "confirmed_selected_harm": 0,
+    "projected_correct": 0,
+    "projected_failed_at_cap": 1,
+    "projected_tokens_on_selected": 203824,
+    "projected_unobserved": 0,
+    "selected": 1,
+    "threshold": 154876
+   }
+  ]
+ }
+}
