@@ -23,7 +23,7 @@ A post hoc frame of all 22 observed eligible nontraining runs has 17 source labe
 - Permission binds independently supplied design and authorization digests, candidate, model, scorer and runtime. Missing permission defaults to full; mismatches are errors.
 - Fixed-n and conservative alpha-spending bounds are separate. Hashes do not prove independent sampling or chronology. Risk receipts never authorize paid requests or monetary claims.
 
-This first GitHub PR contains the standalone assurance layer, its core tests and CI. The complete agent runtime, imported S4c integration, private historical fixtures and fuller census are delivered separately in the S5 source archive; they have NOT all been imported into this branch. Raw private traces, proxy configuration and credentials are intentionally absent.
+This first GitHub PR contains the standalone assurance layer and its core tests. Verification is local only (`sh scripts/run_local_checks.sh`); no CI workflow is used, because the host account's Actions billing is blocked and a workflow that never reaches a runner certifies nothing. The complete agent runtime, imported S4c integration, private historical fixtures and fuller census are delivered separately in the S5 source archive; they have NOT all been imported into this branch. Raw private traces, proxy configuration and credentials are intentionally absent.
 
 ## Next research gate
 

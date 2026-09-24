@@ -18,3 +18,13 @@ No API credentials, raw private requests, model-provider addresses, vendor binar
 - Keep the independent CCA research track outside this repository.
 
 Current source import and review work is tracked in pull requests. Default behavior must remain conservative while deployment evidence is incomplete.
+
+## Local verification
+
+There is no CI workflow in this repository. Verification runs locally:
+
+```bash
+sh scripts/run_local_checks.sh
+```
+
+It always runs the fixture-free assurance contracts, adds the full regression and Pi checks when the private snapshots/`node_modules` are present, prints skip lines otherwise, and exits non-zero on failure.
