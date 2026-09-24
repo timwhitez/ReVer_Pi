@@ -17,7 +17,7 @@ it did not observe.
 ## TL;DR
 
 ```bash
-pip install -e .            # gateway + CLI
+pip install -e '.[test]'    # gateway + CLI (+ pytest for the local checks)
 cd pi && npm ci && cd ..    # Pi extension dependencies
 sh scripts/offline-smoke.sh # end-to-end check: gateway -> session -> Pi -> ledger, no credentials
 ```

@@ -25,7 +25,7 @@ git status --short --branch
 git rev-parse HEAD
 python3 --version && node --version
 python3 -m venv .venv && . .venv/bin/activate
-pip install -e .
+pip install -e '.[test]'            # the test extra is required for scripts/run_local_checks.sh
 cd pi && npm ci && npm run typecheck && npm test && cd ..
 ```
 

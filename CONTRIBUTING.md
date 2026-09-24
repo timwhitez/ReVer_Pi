@@ -3,7 +3,7 @@
 ## Before you change anything
 
 ```bash
-python3 -m venv .venv && . .venv/bin/activate && pip install -e .
+python3 -m venv .venv && . .venv/bin/activate && pip install -e '.[test]'
 cd pi && npm ci && cd ..
 sh scripts/run_local_checks.sh          # contract tests, plus the full suites when fixtures exist
 sh scripts/offline-smoke.sh /tmp/rever-smoke

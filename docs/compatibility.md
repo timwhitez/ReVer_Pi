@@ -10,7 +10,7 @@
 | TypeScript | `5.9.3` | `npm run typecheck` |
 | Node.js | `>= 22.19` | `node --experimental-strip-types` runs the extension and its tests |
 | Python | `>= 3.11` | Gateway, CLI, studies |
-| Python dependencies | `requirements.lock` | `pip install -e .`; `requirements-harbor.lock` adds the optional Harbor extra |
+| Python dependencies | `requirements.lock` | `pip install -e '.[test]'`; `requirements-harbor.lock` adds the optional Harbor extra |
 
 A different Pi version is a compatibility change, not a drop-in upgrade: the extension depends on
 Pi's public extension API surface (provider registration, tool registration, event hooks,
