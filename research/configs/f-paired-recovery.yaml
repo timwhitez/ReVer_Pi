@@ -1,0 +1,16 @@
+name: f-paired-intervention-recovery
+methods: [rever_lite, rever_indexed, mask]
+split: search
+repeats: 1
+seed: 20260918
+compression:
+  memory_bytes: 6000
+  recent_records: 3
+  archive_bytes: 20000000
+  recovery_calls: 3
+  summarizer_output_tokens: 4096
+budget:
+  max_total_tokens: 3000000
+  max_attempts: 400
+  per_cell_tokens: 1000000
+actor_max_turns: 4

@@ -1,0 +1,20 @@
+name: independent-code-review
+methods:
+- full
+- mask
+- archive
+- rever_lite
+split: search
+repeats: 1
+seed: 20260912
+compression:
+  memory_bytes: 18000
+  recent_records: 3
+  archive_bytes: 20000000
+  recovery_calls: 3
+  summarizer_output_tokens: 4096
+budget:
+  max_total_tokens: 12000000
+  max_attempts: 1000
+  per_cell_tokens: 100000
+actor_max_turns: 4

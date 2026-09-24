@@ -1,0 +1,13 @@
+{
+  "memory_bytes": 18000,
+  "recent_records": 3,
+  "excerpt_chars": 400,
+  "archive_bytes": 20000000,
+  "max_metadata_bytes": 2000000,
+  "recovery_calls": 3,
+  "recovery_chars": 6000,
+  "recovery_search_mode": "match",
+  "summarizer_output_tokens": 4096,
+  "hybrid_threshold_bytes": 12000,
+  "guideline": "Preserve task goals, active constraints, unresolved work and version-qualified evidence."
+}

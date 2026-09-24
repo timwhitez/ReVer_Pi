@@ -1,39 +1,77 @@
-# ReVerPi
+# ReVer-Pi
 
-Pi-based agent and source-separated context-management research.
+**Evidence-preserving context projection for Pi agents.**
 
-## Status
+ReVer-Pi is a standalone extension for [Pi](https://github.com/earendil-works/pi) plus a local
+control-plane gateway. Observations leave the active context as exact, addressable evidence
+instead of disappearing: the agent can search the archive and re-read any interval byte-for-byte,
+while the gateway keeps one central ledger, enforces a frozen budget, and never invents a number
+it did not observe.
 
-S5 imports the complete current **implementation source**, not the private experiment archive or historical regression fixtures. New risk receipts are required before the deployed-mode runner can choose projection. The old 30% flag does not authorize the supplied 5% plan. No claim of superiority or new paid allowance is made.
+> [!IMPORTANT]
+> This repository is a working codebase, not a results claim. It is not an official distribution
+> of Pi, it is not affiliated with SoL-Pi, and it does not claim to outperform either of them.
+> The experiment record that produced the design lives in [`research/`](research/README.md) and is
+> not required to install or run the agent.
 
-The production Python/Pi sources remain the frozen RC7.1 lineage. S5 adds strict scoring, censoring-aware assessment and research-layer runtime binding. Read `docs/s5/RESEARCH_PLAN.md` and `paper/s5/manuscript.md`.
-
-## Development
-
-Use Python 3.12+ (the local validation used 3.13.5), Node 22.19+ and the supplied dependency locks. The Pi version is fixed to 0.84.2; do not silently substitute SoL-Pi's newer requirement.
-
-`python -m pip install -e .` installs the Python implementation. `cd pi && npm ci && npm run typecheck` installs/checks the Pi extension. Do not provide model secrets to any test run.
-
-Standalone assurance checks:
-
-```bash
-python -B -m pytest research/s5/tests/test_s5_contracts.py research/s5/tests/test_s5_statistics.py research/s5/tests/test_s5_assurance.py -q
-```
-
-The full private S5 delivery supplies fixed development source snapshots and historical regression fixtures for all tests. They are deliberately not copied into this import. Full-repository pytest without those fixtures is not the local contract either. `research/s5/run.py census` requires the original S4 delivery in a separate local directory. It does not fetch evidence from GitHub or call a model.
-
-Verification is local-only; this repository has no CI workflow:
+## TL;DR
 
 ```bash
-sh scripts/run_local_checks.sh
+pip install -e .            # gateway + CLI
+cd pi && npm ci && cd ..    # Pi extension dependencies
+sh scripts/offline-smoke.sh # end-to-end check: gateway -> session -> Pi -> ledger, no credentials
 ```
 
-It runs the pytest suites present in the checkout and the Pi typecheck/tests when `pi/node_modules` exists, prints skip lines when it does not, and exits non-zero on any failure.
+The smoke run starts a loopback gateway with a protocol-only mock model, opens one session, drives
+Pi through the extension, and prints the ledger. It makes no external request and needs no API key.
+A real provider is a separate, explicitly acknowledged configuration step.
 
-## Evidence and permissions
+## What ReVer-Pi adds
 
-Raw requests, responses, ledgers, proxy addresses, model credentials and runtime binaries are excluded. A code/manifest digest is not an independent reviewer or a proof of sampling assumptions. Keep the repository private until a separate publication review. The independent CCA research track is outside this project.
+| Area | Mechanism | What changes |
+|---|---|---|
+| Context | **Online projection** | Tool observations above a size threshold, seen more than the configured exposures, are replaced at a request boundary by a bounded excerpt plus a content-addressed handle. Default mode is `off`. |
+| Evidence | **Archive and exact recall** | `search_evidence(query)` locates a literal in archived text; `recover_evidence(handle, start, chars)` returns the exact interval. Reads never claim to revalidate current workspace state. |
+| Verification | **Revalidation receipts** (opt-in) | An operator registers a pinned verifier and runner; the agent can request a fresh run and receives a receipt bound to the current task, workspace and revision. Nothing is auto-run and no model-selected command is accepted. |
+| Accounting | **One central ledger** | Every attempt is recorded with its usage and currency status. Unknown attempts stay unknown instead of becoming zero, and `reverpi costs` / `reconcile` report from that single source. |
+| Budgets | **Frozen study config** | Token, attempt, per-cell and disk limits are bound to a study config; the gateway fails closed rather than silently exceeding them. |
 
-## Import lineage
+Four rules hold across all of them:
 
-This branch has the existing main commit b2333898e75f317b78ddee57335448b724df741a as its parent. It is delivered as a Git bundle for an authorized host; creating the bundle does not mean it has been pushed. No force push is required.
+- **No Pi patches.** The extension uses Pi's public extension API and a pinned Pi release.
+- **Explicit opt-in.** Projection defaults to `off`; recovery tools register only when the session
+  grants recovery capability.
+- **Evidence is never rewritten.** Archived bytes are stored once and retrieved exactly; excerpts
+  are labelled as excerpts.
+- **Honest accounting.** Mock usage is synthetic and labelled; partial, unknown and unreconciled
+  costs are reported as such.
+
+## Requirements
+
+- Python 3.11+ with the dependencies in `pyproject.toml` (`pip install -e .`), pinned by `requirements.lock`
+- Node.js 22.19+ and Pi `@earendil-works/pi-coding-agent@0.84.2` (installed by `cd pi && npm ci`)
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [docs/getting-started.md](docs/getting-started.md) | Install, offline smoke, first real-provider run, reading results |
+| [docs/configuration.md](docs/configuration.md) | Provider, study and compression configuration; environment variables; methods |
+| [docs/architecture.md](docs/architecture.md) | Gateway, sessions, projection, archive, ledger, failure behaviour |
+| [docs/compatibility.md](docs/compatibility.md) | Pinned versions and compatibility rules |
+| [docs/research.md](docs/research.md) | Where the experiment record lives and what it does and does not establish |
+| [agents-install.md](agents-install.md) | Procedure for coding agents installing or verifying this repository |
+
+## Safety and scope
+
+- The gateway binds to loopback by default; non-loopback binding requires an explicit flag and is
+  the operator's responsibility to isolate.
+- Real provider calls require `--allow-paid` and an explicit acknowledgement; credentials are only
+  ever read from environment variables and are never written to artifacts.
+- The evidence tools are for evidence-grounded work; they are not a sandbox for untrusted code.
+- Reusing this repository's research numbers as a product claim is out of scope: see
+  [docs/research.md](docs/research.md).
+
+## License
+
+MIT — see [LICENSE](LICENSE).

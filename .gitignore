@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 node_modules/
+node_modules
 .venv/
 dist/
 build/
@@ -12,5 +13,9 @@ build/
 runs/
 evidence/
 private/
-provider.local.*
 *.bundle
+reports/
+data/fixtures/
+.smoke/
+configs/provider.local.yaml
+configs/provider.local.json

@@ -269,6 +269,8 @@ async def test_campaign_development_preparation_and_resume(tmp_path,flash):
     assert campaign_status(ROOT,out,r['campaign_sha256'])['observed_tokens']>0
 
 def test_gen10_audit_is_rows_not_missing_raw_ledger():
+    if not (ROOT/'reports/rc4_gen10_20260919').is_dir():
+        pytest.skip("sealed gen10 reports are not distributed (research artifact)")
     r=audit_gen10(ROOT)
     assert r['result_rows_tokens']==37909 and r['evaluation_reports_tokens']==37909
     assert r['explicit_rerun_obligation_in_builder']

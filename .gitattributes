@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+# Binary artifacts that must keep their exact bytes.
+*.png binary
+*.pdf binary
+*.bundle binary
+*.lock binary
+pi/package-lock.json binary

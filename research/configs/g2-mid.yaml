@@ -1,0 +1,22 @@
+name: g2-mid-budget-diagnostics
+methods:
+- full
+- mask
+- hybrid
+- rever_lite
+- rever_indexed
+- validity_only
+split: search
+repeats: 1
+seed: 20260917
+compression:
+  memory_bytes: 6000
+  recent_records: 3
+  archive_bytes: 20000000
+  recovery_calls: 3
+  summarizer_output_tokens: 4096
+budget:
+  max_total_tokens: 5000000
+  max_attempts: 500
+  per_cell_tokens: 2000000
+actor_max_turns: 4

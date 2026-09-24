@@ -1,0 +1,25 @@
+name: pi-gateway-pilot
+methods:
+- pi_original
+- pi_native
+- mask
+- archive
+- summary
+- hybrid
+- rever_lite
+- rever_summary
+- validity_only
+split: search
+repeats: 1
+seed: 20260912
+compression:
+  memory_bytes: 18000
+  recent_records: 3
+  archive_bytes: 20000000
+  recovery_calls: 3
+  summarizer_output_tokens: 4096
+budget:
+  max_total_tokens: 10000000
+  max_attempts: 1500
+  per_cell_tokens: 2000000
+actor_max_turns: 4
