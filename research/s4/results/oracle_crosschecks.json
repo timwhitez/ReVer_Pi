@@ -1,0 +1,68 @@
+[
+  {
+    "gold_in_actor_snapshot": false,
+    "manual_vs_runtime_equal": true,
+    "network_allowed": false,
+    "returncode": 0,
+    "source_id": "cachetools-7.1.4",
+    "stderr": "",
+    "stdout": "{\"fifo_keys\": [\"b\", \"c\"], \"lru_keys\": [\"a\", \"c\"], \"oversize_error\": \"ValueError\", \"size_after_replace\": 5}\n",
+    "task_id": "cache-behavior",
+    "task_sha256": "8734ccb1c53425c5654d620c79c9cd4cd3760fd9d6dcfed097b9fce4bf864f23"
+  },
+  {
+    "gold_in_actor_snapshot": false,
+    "manual_vs_runtime_equal": true,
+    "network_allowed": false,
+    "returncode": 0,
+    "source_id": "cachetools-7.1.4",
+    "stderr": "",
+    "stdout": "{\"keyword_order_equal\": true, \"method_self_equal\": true, \"numeric_hash_equal\": true, \"numeric_typed_equal\": false}\n",
+    "task_id": "cache-keys",
+    "task_sha256": "89e4e80062ef575e43ac60c90be0091bfc934ba147ad14646cf7bbfa6e1a185f"
+  },
+  {
+    "gold_in_actor_snapshot": false,
+    "manual_vs_runtime_equal": true,
+    "network_allowed": false,
+    "returncode": 0,
+    "source_id": "packaging-25.0",
+    "stderr": "",
+    "stdout": "{\"below_final\": true, \"normalized_name\": \"friendly-bard-name\", \"normalized_version\": \"1\", \"prerelease\": true, \"release\": [1, 0], \"version\": \"1.0rc1+abc.1\"}\n",
+    "task_id": "packaging-normalization",
+    "task_sha256": "3c5f9185e083f02c79f0c788f669b0e499c8d0c7610402d78d29427612edb236"
+  },
+  {
+    "gold_in_actor_snapshot": false,
+    "manual_vs_runtime_equal": true,
+    "network_allowed": false,
+    "returncode": 0,
+    "source_id": "packaging-25.0",
+    "stderr": "",
+    "stdout": "{\"accepted\": [false, true, true, false], \"extras\": [\"fast\"], \"marker_results\": [true, false], \"wheel_name\": \"my-pkg\", \"wheel_tags\": [\"py3-none-any\"]}\n",
+    "task_id": "packaging-compatibility",
+    "task_sha256": "ac542db45b3f5abcbe5a994f58b6f34657f4ecc8292bca9dfc8f329b7ca775c7"
+  },
+  {
+    "gold_in_actor_snapshot": false,
+    "manual_vs_runtime_equal": true,
+    "network_allowed": false,
+    "returncode": 0,
+    "source_id": "click-8.1.8",
+    "stderr": "",
+    "stdout": "{\"boolean\": false, \"choice\": \"Alpha\", \"clamped\": 5, \"invalid_integer\": \"BadParameter\", \"tuple_value\": [\"name\", 7]}\n",
+    "task_id": "click-types",
+    "task_sha256": "e49765efc1369d92ebbd7d533621dfd6e0e9ec413cf7fbea24c6fca1f34bb99b"
+  },
+  {
+    "gold_in_actor_snapshot": false,
+    "manual_vs_runtime_equal": true,
+    "network_allowed": false,
+    "returncode": 0,
+    "source_id": "click-8.1.8",
+    "stderr": "",
+    "stdout": "{\"count_default\": 3, \"count_name\": \"count\", \"flag_name\": \"dry_run\", \"is_flag\": true, \"primary_opts\": [\"--dry-run\"], \"secondary_opts\": [\"--no-dry-run\"], \"variadic_nargs\": -1, \"variadic_required\": false}\n",
+    "task_id": "click-parameters",
+    "task_sha256": "8caf866d5007c50fb6e056d1c5b4532ce1214982d0deee7b5b5cb6ea1e256e02"
+  }
+]

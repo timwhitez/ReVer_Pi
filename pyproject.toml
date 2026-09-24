@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reverpi-lab"
+version = "0.1.3rc4"
+description = "Budgeted, auditable context-compaction research for reasoning agents"
+requires-python = ">=3.11"
+dependencies = ["httpx==0.28.1", "pydantic==2.13.4", "PyYAML==6.0.3", "fastapi==0.128.2", "uvicorn==0.48.0", "jsonschema==4.26.0"]
+[project.optional-dependencies]
+harbor = ["harbor==0.22.0"]
+test = ["pytest==9.0.2", "pytest-asyncio==1.3.0"]
+[project.scripts]
+reverpi = "reverpi.cli:main"
+reverpi-audit = "reverpi.research_cli:main"
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["provenance", "node_modules", ".venv", ".git"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+addopts = "-ra"

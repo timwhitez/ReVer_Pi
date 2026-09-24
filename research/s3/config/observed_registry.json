@@ -1,0 +1,24 @@
+[
+  {
+    "instance_id": "observed-linked-note-01",
+    "source_group": "owned-linked-note-generator",
+    "revision": "frozen-plan-01",
+    "content_sha256": "7e17c31d5c7f14e75f463442f6df8b978dd21c494d7c1dad35b852353c59da1e",
+    "provenance": "evidence/RC7_1_Paid_Evidence/attempt_01/run/FIXTURE.json (fixture descriptor; full raw manifests separately verified)",
+    "split": "development",
+    "stratum": "observed_exploratory",
+    "replay_scope": "readonly_snapshot",
+    "inspected": true
+  },
+  {
+    "instance_id": "observed-linked-note-02",
+    "source_group": "owned-linked-note-generator",
+    "revision": "frozen-plan-02",
+    "content_sha256": "cc7cee93fb95ab6d38342be78de196a565248d2dfcae7eef2e6c87f5e4a1e7ec",
+    "provenance": "evidence/RC7_1_Paid_Evidence/attempt_02/run/FIXTURE.json (fixture descriptor; full raw manifests separately verified)",
+    "split": "development",
+    "stratum": "observed_exploratory",
+    "replay_scope": "readonly_snapshot",
+    "inspected": true
+  }
+]

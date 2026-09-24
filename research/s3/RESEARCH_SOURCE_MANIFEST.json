@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "source_files": {
+    "research/s3/make_figures.py": "35c41319bb3f1c5a098f219cc14c1cf01d98366817a754e1d1e74abf00b26807",
+    "research/s3/render_paper.py": "b2208a67c911f60404c9aa8d47eda4dbba4f0fe4150156492125c791868e12c0",
+    "research/s3/reverpi_study/__init__.py": "2be747bf6d29f0bde032d4d604bff0272955e1b28a718d46842a3028768f1a5e",
+    "research/s3/reverpi_study/analysis.py": "e05b2521acca4f1709f64372164077808f5f81cd941097a92d45eb1d35affebc",
+    "research/s3/reverpi_study/frontier.py": "b9217f49ec930f697f21601fcd1ad1ca5291126501cc5abeb929d48e9c5b6449",
+    "research/s3/reverpi_study/planning.py": "db6263b872433740126489400f11529262771058b99afbcccd5ae6d190ea63ff",
+    "research/s3/reverpi_study/safeio.py": "1f0a2eaa65625ac93ff591235aecba310582dd89cc8a52b80fdb80b044e94cc5",
+    "research/s3/run.py": "9b800779670528cab383079844d64a77758b67c5649a97da76144917c4a797bf",
+    "research/s3/tests/test_frontier.py": "f93f74794a067fbafb0a5d5f186890a470c2b546eb28a9fd31a6bfb7b7c9a85e",
+    "research/s3/tests/test_integration.py": "ff2807415a4685951f35b6266170edc9629b6860c261d531af553cba410aeec0",
+    "research/s3/tests/test_numeric.py": "99d68f7cfac21fc4a90c6c4fe3f3700c41ff2f019d4933fdf99bffa978124130",
+    "research/s3/tests/test_planning.py": "61871cfde0a63cf98f21506fe01494eadb4699fbcaa37c17236b6cb1f5122c98",
+    "research/s3/tests/test_raw_parser.py": "a6e360652599253d4f8480b6d94342d0349e9bd582836c2f5c4613a8d1924270",
+    "research/s3/tests/test_safeio.py": "eacd6d22c098855b66edd3fbf0731b446a50d0a0d5e95f9c3dc336a2004349e1",
+    "research/s3/verify_bundle.py": "e893f42acc6e63354fe26c1c2b782868e42392f418ff9dfc78ebf60a9bf2e88f"
+  },
+  "research_source_sha256": "5f86d5224f6f492064c8255ac99495dedb3ace5e001b7fd4a3519e0bcf24c7ab",
+  "engine_source_sha256": "d8ed50cc4bf88117293f3ce2cb41a79787b4343be351db29e8a938abc108d811",
+  "note": "Separate from immutable engine SOURCE_MANIFEST.json"
+}

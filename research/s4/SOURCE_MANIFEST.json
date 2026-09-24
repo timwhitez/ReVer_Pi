@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "production_sha256": "d8ed50cc4bf88117293f3ce2cb41a79787b4343be351db29e8a938abc108d811",
+  "research_sha256": "edb7c9d77879f065ecc96893d8d10f052e3042fa62d4fd81f11ff2f20d5b8ee8",
+  "files": {
+    "crosscheck.py": "4b492cb4dab56a386d0f9791258d33ede341527342658564ded42648e1fa15b6",
+    "pi/readonly.test.mjs": "c799a31b8afc453522475726f028cb9ec9dbb8d90b46d74c98a19fa6b99fcf43",
+    "pi/readonly.ts": "eec54c528b63efda7bce8f35d792ff8ed8eaead27a48c15b62e166f72f972872",
+    "reverpi_sources/__init__.py": "5ef9435879b9db0bd7c894b0e546b7c6386082501cb82402584e51f9e448bb1d",
+    "reverpi_sources/analysis.py": "6b79065f0a4aabb48b2cd0bf9275b27e9aacf65a0d65de0f897f9da9c464553c",
+    "reverpi_sources/audit.py": "e961ed316a12dab2877bba821692eec09b831aaf3ab8f256cce92b697b84c756",
+    "reverpi_sources/backend.py": "29d81646bff02af0555483b47333bb269365f0de7e367eff28e696127a8ea813",
+    "reverpi_sources/contracts.py": "758588d49bc7a4067582a6913cddc644e5c628f65d98c256649ca33f6b9dd6b3",
+    "reverpi_sources/runner.py": "b60eb48b888c9d4e48f125bc12aa96d300d65f6eb58af7eb5b1495629ffefb9a",
+    "reverpi_sources/selector.py": "7bc5143343594b00345335c3605b9f80cdd28c102425dc57a4cd6f52964bb5d3",
+    "run.py": "c9229a8e8feb9affddd11e9cbec106ac5f4a6437bf413d4b8afd19bc7fbecf24",
+    "tamper.py": "a3bec5d4ca08353298f4c8a8a828abd7594083e1eb3adbbfa18af999f17bf531",
+    "tests/conftest.py": "f5d45051ab5a89c2b5c977e1481852f034819357ded4f4b746ad94bd11f18970",
+    "tests/test_analysis.py": "cf2e1dc699c6cc0f75d7190dad928efe79b5ba9f517caaef0e5baea45327eb35",
+    "tests/test_contracts.py": "4d21763f77272bfe4d1430559fa1c8e2fdceea0f3e467de2fff5a03f967c7f90",
+    "tests/test_oracles.py": "a9eb6eacf76d4ff6d184e45d6a7e0a235a75359c48d64d10ab3860cc60800a25",
+    "tests/test_runtime.py": "114107af594b7a97f061298cea23e5f566467ac0e9280593cba1a5bfb0bb68a5",
+    "tests/test_selector.py": "f7e0ef5595e389af389964d93209ca395b1ee7d235b69e0eb8998ec9a8ef264d",
+    "verify_s4.py": "3ef7f54d7aa6c3f6f38e01794677bfa7bfa40ec07414a23bf5efa7e33fd88e40",
+    "verify_sources.py": "30c5a1a56e226daf6dd55c3c74f9cc3e149de1e7ced6588992da5206910c1737"
+  }
+}

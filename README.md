@@ -1,20 +1,39 @@
 # ReVerPi
 
-A Pi-based research project on auditable context projection, archived-evidence retrieval, and resource-bounded reasoning agents.
+Pi-based agent and source-separated context-management research.
 
-## Research status
+## Status
 
-This repository is a **private development workspace**. It is not a validated claim that ReVerPi outperforms Pi. Experimental records, source revisions, task contracts, and deployment permissions must remain separate.
+S5 imports the complete current **implementation source**, not the private experiment archive or historical regression fixtures. New risk receipts are required before the deployed-mode runner can choose projection. The old 30% flag does not authorize the supplied 5% plan. No claim of superiority or new paid allowance is made.
 
-The latest supplied S4 campaign includes paired source-reading experiments and a single-arm integration study. Its learned threshold and historical `deployable` field require an audit of sampling, censoring, risk authorization, and artifact identity before any production use.
+The production Python/Pi sources remain the frozen RC7.1 lineage. S5 adds strict scoring, censoring-aware assessment and research-layer runtime binding. Read `docs/s5/RESEARCH_PLAN.md` and `paper/s5/manuscript.md`.
 
-No API credentials, raw private requests, model-provider addresses, vendor binaries, or historical paid-run archives should be committed here. Raw evidence is retained separately by SHA-256.
+## Development
 
-## Operational rules
+Use Python 3.12+ (the local validation used 3.13.5), Node 22.19+ and the supplied dependency locks. The Pi version is fixed to 0.84.2; do not silently substitute SoL-Pi's newer requirement.
 
-- No new paid model request without a separately approved, frozen plan.
-- No replay of an unknown dispatched operation and no replacement of old results.
-- A passing test or hash check is not a quality, safety, or population-level risk certificate.
-- Keep the independent CCA research track outside this repository.
+`python -m pip install -e .` installs the Python implementation. `cd pi && npm ci && npm run typecheck` installs/checks the Pi extension. Do not provide model secrets to any test run.
 
-Current source import and review work is tracked in pull requests. Default behavior must remain conservative while deployment evidence is incomplete.
+Standalone assurance checks:
+
+```bash
+python -B -m pytest research/s5/tests/test_s5_contracts.py research/s5/tests/test_s5_statistics.py research/s5/tests/test_s5_assurance.py -q
+```
+
+The full private S5 delivery supplies fixed development source snapshots and historical regression fixtures for all tests. They are deliberately not copied into this import. Full-repository pytest without those fixtures is not the local contract either. `research/s5/run.py census` requires the original S4 delivery in a separate local directory. It does not fetch evidence from GitHub or call a model.
+
+Verification is local-only; this repository has no CI workflow:
+
+```bash
+sh scripts/run_local_checks.sh
+```
+
+It runs the pytest suites present in the checkout and the Pi typecheck/tests when `pi/node_modules` exists, prints skip lines when it does not, and exits non-zero on any failure.
+
+## Evidence and permissions
+
+Raw requests, responses, ledgers, proxy addresses, model credentials and runtime binaries are excluded. A code/manifest digest is not an independent reviewer or a proof of sampling assumptions. Keep the repository private until a separate publication review. The independent CCA research track is outside this project.
+
+## Import lineage
+
+This branch has the existing main commit b2333898e75f317b78ddee57335448b724df741a as its parent. It is delivered as a Git bundle for an authorized host; creating the bundle does not mean it has been pushed. No force push is required.
