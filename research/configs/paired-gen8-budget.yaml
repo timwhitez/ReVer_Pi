@@ -1,0 +1,5 @@
+max_total_tokens: 300000
+max_attempts: 24
+per_cell_attempts: 6
+per_cell_tokens: 120000
+min_free_disk_bytes: 67108864

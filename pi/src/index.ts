@@ -55,7 +55,7 @@ export default async function extension(pi: ExtensionAPI) {
   if (revision !== 0 || session.accounting.attempts !== 0) throw new Error("Fresh task requires a new gateway session; automatic native-task replay is disabled");
   registerRevalidation(pi); // Explicit operator env enables it; no model-selected commands.
   pi.registerProvider(PROVIDER, {
-    name:"ReVer-Pi research gateway", baseUrl:endpoint, apiKey:"$REVER_SESSION_TOKEN", api:API,
+    name:"ReVer-Pi gateway", baseUrl:endpoint, apiKey:"$REVER_SESSION_TOKEN", api:API,
     models:[{id:session.model,name:session.model,reasoning:true,input:["text"],
       contextWindow:session.context_window,maxTokens:session.max_output_tokens,
       cost:{input:session.prices.input_per_million,output:session.prices.output_per_million,

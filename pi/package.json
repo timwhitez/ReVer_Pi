@@ -1,9 +1,19 @@
 {
-  "name": "reverpi-research-extension",
-  "version": "0.1.3-rc.4",
+  "name": "reverpi-pi-extension",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Research-only ReVer-Pi gateway/provider and transactional compaction extension",
+  "description": "Evidence-preserving context projection for Pi: archive-backed exact recall, transactional compaction and a ledgered gateway provider",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "context-management",
+    "evidence"
+  ],
+  "files": [
+    "src",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22.19.0"
   },
@@ -14,7 +24,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "check": "npm run typecheck && npm test"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "0.84.2",

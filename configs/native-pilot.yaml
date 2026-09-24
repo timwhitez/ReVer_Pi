@@ -1,0 +1,14 @@
+name: native-owned-pilot
+split: search
+methods: [pi_original, pi_native, mask, rever_lite]
+repeats: 1
+seed: 20260912
+wall_seconds: 300
+trial_deadline_seconds: 900
+max_tools: 40
+max_turns: 20
+reward_key: reward
+success_threshold: 1.0
+environment: docker
+# Explicitly add the private gateway hostname/IP reachable from Docker.
+allow_agent_hosts: []

@@ -262,6 +262,8 @@ def test_sign_rejects_invalid_counts(counts):
 
 
 def test_latest_window_immutable_audit_and_timeout_reward_distinction():
+    if not (ROOT/'provenance/official_window_20260920').is_dir():
+        pytest.skip("sealed official-window provenance is not distributed (research artifact)")
     r=script('audit_official_window').audit(ROOT/'provenance/official_window_20260920')
     assert r['result_row_checks_passed']==48 and r['paired']['both_success']==12
     assert r['exceptions_with_successful_reward']==3 and len(r['exception_rows'])==10

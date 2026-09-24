@@ -9,6 +9,8 @@ import verify_paired_prefix as auditor
 
 
 def test_mixed_recovery_rejection_is_audited_without_claiming_exact_recovery(monkeypatch):
+    if not (ROOT/'reports/rc7/sealed_profile/responses_long').is_dir():
+        pytest.skip("sealed RC7 transcript fixture is not distributed (research artifact)")
     original = auditor.transcript
     text = ['ReVer halted: recovery_arguments']
 

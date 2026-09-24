@@ -1,0 +1,12 @@
+name: mock
+protocol: chat_completions
+base_url: http://127.0.0.1:1/v1
+model: mock-reasoner
+mock: true
+effort: low
+context_window: 1000000
+requests_per_minute: 100000
+tokens_per_minute: 100000000
+retry:
+  base_seconds: 0
+  cap_seconds: 0

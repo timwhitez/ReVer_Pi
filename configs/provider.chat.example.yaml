@@ -1,0 +1,31 @@
+name: provider-a
+protocol: chat_completions
+base_url: https://YOUR_PROVIDER_HOST/v1
+api_key_env: REVER_API_KEY
+model: REPLACE_WITH_REASONING_MODEL
+effort: low
+effort_map:
+  low: low
+  medium: medium
+  high: high
+reasoning_style: standard
+chat_output_field: max_completion_tokens
+max_output_tokens: 4096
+context_window: 131072
+stream: false
+requests_per_minute: 20
+tokens_per_minute: 500000
+concurrency: 2
+retry:
+  max_attempts: 3
+  base_seconds: 1
+  cap_seconds: 60
+  total_seconds: 600
+  retry_ambiguous: false
+prices:
+  configured: false
+  input_per_million: 0
+  cached_input_per_million: 0
+  output_per_million: 0
+  source: Fill frozen user-supplied prices before currency budgeting; zeros are NOT
+    free API pricing

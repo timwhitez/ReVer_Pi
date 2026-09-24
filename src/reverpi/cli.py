@@ -43,7 +43,7 @@ def doctor(args):
 
 
 def parser():
-    p=argparse.ArgumentParser(prog="reverpi",description="ReVer-Pi research lab: explicit budgets, protocols, provenance and failure accounting")
+    p=argparse.ArgumentParser(prog="reverpi",description="ReVer-Pi: evidence-preserving context projection gateway and CLI for Pi agents")
     sub=p.add_subparsers(dest="command",required=True)
     d=sub.add_parser("doctor",help="Offline environment/config inspection; no paid request")
     d.add_argument("--provider");d.add_argument("--out")

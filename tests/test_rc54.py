@@ -15,6 +15,13 @@ sys.path.insert(0,str(ROOT/'scripts'))
 from audit_supplement import validate_manifest, official_check
 from offline_artifact_contracts import validate_profile_artifacts
 
+# The sealed RC5.3 offline reports are research artifacts and are not distributed with
+# the product repository; this file's artifact-mutation tests need them as inputs.
+SEALED_REPORTS = ROOT/'reports/rc5_3/full_offline'
+if not SEALED_REPORTS.is_dir() or not (SEALED_REPORTS/'historical/report.json').is_file():
+    pytest.skip("sealed RC5.3 offline reports are not distributed (research artifact)",
+                allow_module_level=True)
+
 
 def manifest(tmp_path):
     from hashlib import sha256
