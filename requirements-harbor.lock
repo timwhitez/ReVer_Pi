@@ -1,0 +1,2 @@
+# Optional native controller, Python >=3.12. Candidate API contract; live acceptance required.
+harbor==0.22.0

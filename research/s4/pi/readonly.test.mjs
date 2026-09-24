@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{mkdtempSync,mkdirSync,writeFileSync,symlinkSync,rmSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';
+import{permittedSourceRead}from'./readonly.ts';
+for(const value of ['../x','/tmp/x','src//x','src/./x','src/../x','src\\x'])test('reject alias '+value,()=>assert.equal(permittedSourceRead({path:value},'/tmp',[value]),false));
+test('nested ordinary file permitted, symlink denied',()=>{const p=mkdtempSync(join(tmpdir(),'s4-node-'));try{mkdirSync(join(p,'src'));writeFileSync(join(p,'src','a.py'),'x=1');assert.equal(permittedSourceRead({path:'src/a.py'},p,['src/a.py']),true);symlinkSync(join(p,'src/a.py'),join(p,'src','b.py'));assert.equal(permittedSourceRead({path:'src/b.py'},p,['src/b.py']),false);assert.equal(permittedSourceRead({path:'src/a.py'},p,[]),false);}finally{rmSync(p,{recursive:true,force:true});}});

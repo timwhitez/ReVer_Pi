@@ -1,0 +1,7 @@
+{
+  "base": "ReVerPi Research S3",
+  "base_zip_sha256": "39a75b0478ead9d4434d8d17f6cf0c4aafe2c0fb66508377ed02a55e9532e7aa",
+  "frozen_production_sha256": "d8ed50cc4bf88117293f3ce2cb41a79787b4343be351db29e8a938abc108d811",
+  "research_sha256": "edb7c9d77879f065ecc96893d8d10f052e3042fa62d4fd81f11ff2f20d5b8ee8",
+  "new_paid_experiments": 0
+}
