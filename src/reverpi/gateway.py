@@ -26,7 +26,7 @@ from .errors import LabError
 from .ledger import Ledger
 from .memory import Archive, Compressor, Memory, Record, METHODS
 from .protocols import Message, validate_messages
-from .transport import APIClient
+from .transport import APIClient, DISPATCH_GUARD
 from .online_projection import ObservationMeta, ProjectionStore
 from .util import canonical, digest, safe_id, source_manifest, strict_json_loads, seal_cache, unseal_cache
 
@@ -247,9 +247,23 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
             raise LabError("method_not_in_plan", "Session method was not declared in this gateway's frozen configuration")
         return state
 
+    def require_live(session_id: str):
+        """Pre-dispatch check: a revoked or expired session gets no new upstream attempt."""
+        state = sessions.get(session_id)
+        if state["disabled"] or state["expires"] <= time.time():
+            raise LabError("session_revoked", "Session was revoked before dispatch; no upstream request was sent")
+
     async def guarded(work, request: Request, session_id: str):
-        """Revoke/disconnect cancels upstream work; unknown billing remains reserved."""
-        task = asyncio.create_task(work)
+        """Revoke/disconnect cancels upstream work; unknown billing remains reserved.
+
+        Queued work re-checks the session after concurrency/rate admission (and on
+        every retry) via DISPATCH_GUARD, which the task inherits from this context.
+        """
+        token = DISPATCH_GUARD.set(lambda: require_live(session_id))
+        try:
+            task = asyncio.create_task(work)
+        finally:
+            DISPATCH_GUARD.reset(token)
         try:
             while not task.done():
                 done, _ = await asyncio.wait({task}, timeout=.25)

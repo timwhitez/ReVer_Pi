@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import codecs
+import contextvars
 import json
 import math
 import random
@@ -19,6 +20,13 @@ from .protocols import (Completion, Message, build_request, conservative_input_t
                         normalize_usage, parse_completion)
 from .util import digest, strict_json_loads
 from .transport_trace import exception_signature, record_transport_trace
+
+# Trusted control-plane admission check, set by the gateway for the task that owns
+# a request. It is consulted after concurrency/rate admission and before an attempt
+# is reserved or sent, so queued work of a revoked session is never dispatched.
+# It must raise LabError to refuse; it never comes from model or request fields.
+DISPATCH_GUARD: contextvars.ContextVar[Callable[[], None] | None] = contextvars.ContextVar(
+    "reverpi_dispatch_guard", default=None)
 
 
 def retry_after(headers: httpx.Headers, now: datetime | None = None) -> float | None:
@@ -299,6 +307,9 @@ class APIClient:
             async with self.sem:
                 while True:
                     async with self.dispatch_lock:
+                        guard = DISPATCH_GUARD.get()
+                        if guard is not None:
+                            guard()  # Refusal here creates no attempt and sends nothing.
                         aid, delay = self.ledger.reserve_gated(
                             op, cell, p.name, reserve_tokens, cost,
                             p.requests_per_minute, p.tokens_per_minute)
