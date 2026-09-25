@@ -199,7 +199,7 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
     app = FastAPI(title="ReVer-Pi private gateway", version="0.1.3rc4", docs_url=None, redoc_url=None,
                   openapi_url=None, lifespan=lifespan)
     app.state.client, app.state.sessions, app.state.ledger = client, sessions, ledger
-    app.state.projection = projection
+    app.state.projection, app.state.archive = projection, archive
 
     @app.exception_handler(LabError)
     async def lab_error(request: Request, err: LabError):
@@ -370,9 +370,10 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
                                                   messages, body.observation_meta, archive)
                     sent = [Message.from_dict(m) for m in prepared["sent_messages"]]
                 if state["method"] != "pi_original":
-                    for message in messages:
-                        if message.content:
-                            archive.put(state["id"], message.content)
+                    # One batch; tool results already verified by prepare are not re-checked.
+                    verified = {m.content for m in messages if m.role == "tool"} if prepared is not None else set()
+                    archive.put_many(state["id"], [m.content for m in messages
+                                                   if m.content and m.content not in verified])
                 # Pairing can stop BEFORE any model claim/reservation. It never
                 # edits counters or turns an unresolved upstream call into a replay.
                 work = (completion_backend(state=state, body=body, sent=sent, prepared=prepared)
