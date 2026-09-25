@@ -72,6 +72,10 @@ def _read_only(path: Path) -> Iterator[sqlite3.Connection]:
         db.execute("BEGIN")  # One snapshot for every query below.
         yield db
         db.execute("COMMIT")
+    except sqlite3.OperationalError as exc:
+        # Locked/busy/unavailable is transient and says nothing about the ledger's validity.
+        raise LabError("ledger_unreadable", "Ledger is locked or unavailable; retry the read-only query",
+                       retryable=True) from exc
     except sqlite3.DatabaseError as exc:
         raise LabError("ledger_schema", "Not a readable ReVer-Pi ledger") from exc
     finally:
@@ -84,12 +88,17 @@ def read_totals(path: Path, cell: str | None = None) -> dict:
         return _totals(db, cell)
 
 
+def bound_identity(path: Path, key: str) -> str | None:
+    """The canonical value bound under `key` in an existing ledger, read without writing."""
+    with _read_only(path) as db:
+        row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
 def bound_budget(path: Path) -> Budget:
     """The budget an existing ledger was created with, read without writing."""
-    with _read_only(path) as db:
-        row = db.execute("SELECT value FROM meta WHERE key='budget'").fetchone()
     try:
-        return Budget.model_validate(json.loads(row["value"]))
+        return Budget.model_validate(json.loads(bound_identity(path, "budget")))
     except ValueError as exc:
         raise LabError("ledger_schema", "Ledger budget identity is not valid") from exc
 
@@ -97,8 +106,14 @@ def bound_budget(path: Path) -> Budget:
 class Ledger:
     @classmethod
     def open_existing(cls, path: Path) -> "Ledger":
-        """Writable handle on an existing ledger using its own bound budget (e.g. reconcile)."""
-        return cls(path, bound_budget(path))
+        """Handle on an EXISTING, schema-checked ledger for explicit audited writes (reconcile).
+
+        Unlike the constructor it creates no tables, changes no permissions and does not
+        re-bind the budget, so a ledger written by an older schema stays openable.
+        """
+        ledger = cls.__new__(cls)
+        ledger.path, ledger.budget = Path(path), bound_budget(path)
+        return ledger
 
     def __init__(self, path: Path, budget: Budget):
         self.path, self.budget = Path(path), budget

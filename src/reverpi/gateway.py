@@ -247,10 +247,13 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
             raise LabError("method_not_in_plan", "Session method was not declared in this gateway's frozen configuration")
         return state
 
+    def revoked(session_id: str) -> bool:
+        state = sessions.get(session_id)
+        return bool(state["disabled"]) or state["expires"] <= time.time()
+
     def require_live(session_id: str):
         """Pre-dispatch check: a revoked or expired session gets no new upstream attempt."""
-        state = sessions.get(session_id)
-        if state["disabled"] or state["expires"] <= time.time():
+        if revoked(session_id):
             raise LabError("session_revoked", "Session was revoked before dispatch; no upstream request was sent")
 
     async def guarded(work, request: Request, session_id: str):
@@ -269,15 +272,13 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
                 done, _ = await asyncio.wait({task}, timeout=.25)
                 if done:
                     break
-                state = sessions.get(session_id)
-                if state["disabled"] or state["expires"] <= time.time():
+                if revoked(session_id):
                     raise LabError("session_revoked", "Session was revoked while the request was executing", ambiguous=True)
                 if await request.is_disconnected():
                     raise LabError("client_disconnected", "Client disconnected; possible dispatched work remains reserved", ambiguous=True)
             result = await task
             # Completion can win the polling race; revocation still wins delivery.
-            state = sessions.get(session_id)
-            if state["disabled"] or state["expires"] <= time.time():
+            if revoked(session_id):
                 raise LabError("session_revoked", "Session was revoked before response delivery", ambiguous=True)
             return result
         finally:

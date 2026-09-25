@@ -33,15 +33,15 @@ def doctor(args):
             "executables":{n:shutil.which(n) for n in ("node","npm","docker","harbor")},
             "network_called":False,"code_sha":digest(source_manifest(ROOT)),
             "pi_package_installed":(ROOT/"pi/node_modules/@earendil-works/pi-coding-agent/package.json").exists()}
-    if args.provider:
-        p=load(args.provider,Provider)
+    p=load(args.provider,Provider) if args.provider else None
+    if p is not None:
         info["provider"]={"protocol":p.protocol,"model":p.model,"mock":p.mock,"requested_effort":p.effort,
                           "mapped_effort":p.effort_map[p.effort],"secret_present":p.mock or bool(os.environ.get(p.api_key_env)),
                           "currency_pricing_configured":p.prices.configured,"compatibility":"NOT_VERIFIED_WITH_LIVE_PROVIDER"}
     if args.config:
         from .config import online_admission
         study=load(args.config,StudyConfig)
-        info["online_projection"]=(online_admission(load(args.provider,Provider),study) if args.provider else
+        info["online_projection"]=(online_admission(p,study) if p is not None else
             {"mode":study.online_projection.mode,"admission":study.online_projection.admission,
              "allowed":None,"note":"pass --provider to evaluate admission for a Provider profile"})
     if args.out: atomic_write(Path(args.out),canonical(info))
@@ -198,8 +198,11 @@ def execute(args):
         from .ledger import read_totals
         return read_totals(Path(args.run)/"ledger.sqlite",args.cell)
     if cmd=="reconcile":
+        from .ledger import bound_identity
         path=Path(args.run)/"ledger.sqlite"
-        ledger=Ledger(path,load(args.config,StudyConfig).budget) if args.config and path.is_file() else Ledger.open_existing(path)
+        ledger=Ledger.open_existing(path)  # Schema-checked; never creates or repairs a ledger.
+        if args.config and canonical(load(args.config,StudyConfig).budget.model_dump())!=bound_identity(path,"budget"):
+            raise LabError("identity_changed","--config budget differs from the budget bound in this ledger")
         ledger.reconcile(args.attempt,args.tokens,args.usd,args.evidence)
         return ledger.totals()
     if cmd=="development-selection":

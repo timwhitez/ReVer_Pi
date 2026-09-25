@@ -176,3 +176,33 @@ async def test_revocation_after_dispatch_keeps_the_actual_record(provider, tmp_p
         assert totals['attempts'] == 1 and totals['known_tokens'] == 18
     finally:
         await app.state.client.close()
+
+
+@pytest.mark.asyncio
+async def test_refused_retry_keeps_earlier_ambiguous_attempt_ambiguous(provider, ledger):
+    """A retry refused after an ambiguous dispatch must not claim that nothing was sent."""
+    seen, revoked = [], []
+
+    def handler(request):
+        seen.append(1)
+        revoked.append(True)
+        raise httpx.ReadError('connection reset after send', request=request)
+
+    def guard():
+        if revoked:
+            raise LabError('session_revoked', 'Session was revoked before dispatch; no upstream request was sent')
+
+    retry = provider.retry.model_copy(update={'max_attempts': 3, 'retry_ambiguous': True})
+    async with APIClient(provider.model_copy(update={'retry': retry}), ledger,
+                         transport=httpx.MockTransport(handler)) as client:
+        token = DISPATCH_GUARD.set(guard)
+        try:
+            with pytest.raises(LabError) as err:
+                await client.complete([Message('user', 'x')], op='o', cell='c')
+        finally:
+            DISPATCH_GUARD.reset(token)
+    assert err.value.kind == 'session_revoked' and err.value.ambiguous is True
+    assert 'no upstream request was sent' not in err.value.message
+    assert len(seen) == 1
+    totals = ledger.totals()
+    assert totals['attempts'] == 1 and totals['unknown_attempts'] == 1

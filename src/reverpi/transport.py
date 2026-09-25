@@ -303,13 +303,21 @@ class APIClient:
                 raise LabError("configuration", "Missing/invalid extra header environment variable")
             headers[k] = os.environ[env]
         last = LabError("unreachable", "No attempt executed")
+        guard = DISPATCH_GUARD.get()
+        earlier_ambiguous = False  # Any previous attempt of this op may have been processed upstream.
         for attempt_no in range(p.retry.max_attempts):
             async with self.sem:
                 while True:
+                    if guard is not None:
+                        try:
+                            guard()  # Refusal creates no NEW attempt; earlier attempts keep their records.
+                        except LabError as refused:
+                            if attempt_no == 0:
+                                raise
+                            raise LabError(refused.kind, "Refused before a retry; earlier attempts of this "
+                                           "operation keep their recorded (possibly unknown) usage",
+                                           ambiguous=earlier_ambiguous, status=refused.status) from refused
                     async with self.dispatch_lock:
-                        guard = DISPATCH_GUARD.get()
-                        if guard is not None:
-                            guard()  # Refusal here creates no attempt and sends nothing.
                         aid, delay = self.ledger.reserve_gated(
                             op, cell, p.name, reserve_tokens, cost,
                             p.requests_per_minute, p.tokens_per_minute)
@@ -410,6 +418,7 @@ class APIClient:
                         self.ledger.settle(aid, tokens=0 if safe_zero else None,
                                            usd=0 if safe_zero and p.prices.configured else None,
                                            request_id=request_id, status=status, error_kind=last.kind)
+            earlier_ambiguous = earlier_ambiguous or last.ambiguous
             if last.retryable:
                 jitter = self.rng.uniform(0, min(p.retry.cap_seconds, p.retry.base_seconds * 2**attempt_no))
                 delay = max(jitter, retry_hint or 0)
