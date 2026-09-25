@@ -58,7 +58,7 @@ fi
 
 if [ "$SMOKE" = "--with-smoke" ]; then
   tmp=$(mktemp -d)
-  step sh scripts/offline-smoke.sh "$tmp/smoke" 8799
+  step env PYTHON="$PY" sh scripts/offline-smoke.sh "$tmp/smoke" 8799
 else
   skip "offline end-to-end smoke (add --with-smoke, or run scripts/offline-smoke.sh)"
 fi

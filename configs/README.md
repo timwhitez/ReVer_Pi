@@ -10,6 +10,7 @@ read from the environment variable named by `api_key_env`.
 | `review.yaml` | Review-round study profile |
 | `native-pilot.yaml` | Native (Harbor) pilot profile |
 | `gateway.yaml` | Gateway-side study profile |
+| `online-projection.example.yaml` | Online request-boundary projection (`mode: apply`) with the `split_v1` search/read tools, for a `mask` session with a `pi_original` baseline |
 | `mock.chat.yaml`, `mock.responses.yaml` | Protocol-only mock providers used by the offline smoke run |
 | `provider.chat.example.yaml`, `provider.responses.example.yaml`, `provider.thinking_only.example.yaml` | Provider templates for the three wire dialects |
 | `provider.deepseek.example.yaml` | Worked example against a public API root |

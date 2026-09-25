@@ -147,9 +147,7 @@ class ProjectionStore:
         by_id = validate_observations(messages, metadata)
         # Archive verification precedes projection, including duplicate/replayed ops.
         # No overflow fallback drops observations or silently changes a method.
-        for message in messages:
-            if message.role == "tool":
-                archive.put(namespace, message.content)
+        archive.put_many(namespace, [m.content for m in messages if m.role == "tool"])
         with self.db() as db:
             db.execute("BEGIN IMMEDIATE")
             previous = db.execute("SELECT * FROM projection_events WHERE namespace=? AND op=?", (namespace, op)).fetchone()

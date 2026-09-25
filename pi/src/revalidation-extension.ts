@@ -64,8 +64,10 @@ export default function registerRevalidation(pi: ExtensionAPI) {
           details:{current_observation:true,verifier_id:params.verifier_id,task_proof:false}};
       } catch (error) {
         // Do not disclose registry paths, subprocess errors, or private env values.
-        return {content:[{type:"text" as const,text:JSON.stringify({error:"revalidation_failed",
-          exception:error instanceof Error ? error.name : "Error"})}],details:undefined,isError:true};
+        // Throwing is Pi's failure signal; a returned isError field is ignored.
+        // A valid receipt that reports passed:false is a result, not a failure.
+        throw new Error(JSON.stringify({error:"revalidation_failed",
+          exception:error instanceof Error ? error.name : "Error"}));
       }
     }
   });

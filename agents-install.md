@@ -56,12 +56,12 @@ The smoke run must print `offline smoke passed`, one accounted attempt, `account
 
 ```bash
 mkdir -p runs/task-1
-reverpi session-create --run runs/task-1 --id task-1 --method mask --token-file runs/task-1/task-1.token
 reverpi gateway --provider configs/provider.local.yaml --config configs/pilot.yaml --out runs/task-1 \
-  --host 127.0.0.1 --port 8765 [--allow-paid]
+  --host 127.0.0.1 --port 8765 [--allow-paid]      # separate terminal; --allow-paid only with approval
+reverpi session-create --run runs/task-1 --id task-1 --method mask --token-file runs/task-1/task-1.token
 reverpi pi-run --cwd <project> --prompt-file <task.md> --out runs/task-1/pi \
   --gateway http://127.0.0.1:8765 --token-file runs/task-1/task-1.token \
-  --acknowledge-unsandboxed [--allow-paid]
+  --acknowledge-unsandboxed
 reverpi costs --run runs/task-1
 ```
 

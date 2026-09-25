@@ -62,20 +62,43 @@ class Archive:
             os.chmod(self.path, 0o600)
 
     def put(self, namespace: str, content: str) -> str:
-        handle = digest(content)
-        n = len(content.encode("utf-8"))
+        return self.put_many(namespace, [content])[0]
+
+    def put_many(self, namespace: str, contents: list[str]) -> list[str]:
+        """Archive several contents in ONE bounded transaction; handles in input order.
+
+        Each distinct content is identity-checked once: an existing blob must still
+        match byte-for-byte, and the cumulative size of new blobs is checked against
+        the namespace quota. Any failure rolls back the whole batch.
+        """
+        handles = [digest(c) for c in contents]
+        unique = dict(zip(handles, contents))
+        if not unique:
+            return handles
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            old = db.execute("SELECT content,bytes FROM blobs WHERE namespace=? AND handle=?", (namespace, handle)).fetchone()
-            if old:
-                if old[0] != content or old[1] != n:
-                    raise LabError("archive_corruption", "Existing archive blob no longer matches its content identity")
-                return handle
-            used = db.execute("SELECT COALESCE(SUM(bytes),0) FROM blobs WHERE namespace=?", (namespace,)).fetchone()[0]
-            if used + n > self.config.archive_bytes:
-                raise LabError("archive_quota", "Archive capacity exceeded; no old data silently evicted")
-            db.execute("INSERT INTO blobs VALUES (?,?,?,?)", (namespace, handle, content, n))
-        return handle
+            existing = {}
+            keys = list(unique)
+            for i in range(0, len(keys), 500):
+                chunk = keys[i:i+500]
+                existing.update((h, (c, n)) for h, c, n in db.execute(
+                    "SELECT handle,content,bytes FROM blobs WHERE namespace=? AND handle IN (%s)" % ",".join("?"*len(chunk)),
+                    (namespace, *chunk)))
+            used = None
+            for handle, content in unique.items():
+                n = len(content.encode("utf-8"))
+                old = existing.get(handle)
+                if old:
+                    if old[0] != content or old[1] != n:
+                        raise LabError("archive_corruption", "Existing archive blob no longer matches its content identity")
+                    continue
+                if used is None:
+                    used = db.execute("SELECT COALESCE(SUM(bytes),0) FROM blobs WHERE namespace=?", (namespace,)).fetchone()[0]
+                if used + n > self.config.archive_bytes:
+                    raise LabError("archive_quota", "Archive capacity exceeded; no old data silently evicted")
+                db.execute("INSERT INTO blobs VALUES (?,?,?,?)", (namespace, handle, content, n))
+                used += n
+        return handles
 
     def used(self, namespace: str) -> int:
         with self.connect() as db:

@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import register from '../src/revalidation-extension.ts';
+import {runToolThroughPi} from './pi-loop-helper.mjs';
 const exec=promisify(execFile);
 const hash=p=>createHash('sha256').update(readFileSync(p)).digest('hex');
 const keys=['REVER_ENABLE_REVALIDATION','REVER_VERIFIER_REGISTRY','REVER_VERIFIER_REGISTRY_SHA256',
@@ -43,15 +44,15 @@ test('callback invokes a REAL verifier, observes current fail after old pass',as
  assert.equal(receipt.dependency_completeness_certified,false);
 }));
 test('tool denies arbitrary command as verifier id',async()=>fixture(async({pi,tools,root})=>{
- register(pi);const r=await tools[0].execute('1',{verifier_id:'echo arbitrary-command'},undefined,undefined,{cwd:root});assert.equal(r.isError,true);
+ register(pi);await assert.rejects(tools[0].execute('1',{verifier_id:'echo arbitrary-command'},undefined,undefined,{cwd:root}),/revalidation_failed/);
 }));
 test('changed runner fails identity before execution',async()=>fixture(async({pi,tools,root})=>{
  register(pi);writeFileSync(join(root,'registry.json'),'{}');
- const r=await tools[0].execute('1',{verifier_id:'check'},undefined,undefined,{cwd:root});assert.equal(r.isError,true);
+ await assert.rejects(tools[0].execute('1',{verifier_id:'check'},undefined,undefined,{cwd:root}),/revalidation_failed/);
 }));
 test('quota is explicit',async()=>fixture(async({pi,tools,root})=>{
  process.env.REVER_MAX_REVALIDATIONS='1';register(pi);await tools[0].execute('1',{verifier_id:'check'},undefined,undefined,{cwd:root});
- const r=await tools[0].execute('2',{verifier_id:'check'},undefined,undefined,{cwd:root});assert.equal(r.isError,true);
+ await assert.rejects(tools[0].execute('2',{verifier_id:'check'},undefined,undefined,{cwd:root}),/revalidation_failed/);
 }));
 
 // RC4: these use a real Python runner, except the explicitly replayed response.
@@ -60,7 +61,7 @@ test('a cached receipt from the previous invocation is rejected',async()=>fixtur
  pi.exec=async(...args)=>{captured=await original(...args);return captured;};
  register(pi);assert.equal((await tools[0].execute('1',{verifier_id:'check'},undefined,undefined,{cwd:root})).isError,undefined);
  pi.exec=async()=>captured;
- assert.equal((await tools[0].execute('2',{verifier_id:'check'},undefined,undefined,{cwd:root})).isError,true);
+ await assert.rejects(tools[0].execute('2',{verifier_id:'check'},undefined,undefined,{cwd:root}),/revalidation_failed/);
 }));
 test('changing interpreter environment after registration cannot substitute runtime',async()=>fixture(async({pi,tools,root})=>{
  register(pi);process.env.REVER_VERIFIER_PYTHON='/definitely/not/a/python';
@@ -71,10 +72,22 @@ test('changing interpreter environment after registration cannot substitute runt
 test('receipt from another workspace fails even with a current nonce',async()=>fixture(async({pi,tools,root})=>{
  const original=pi.exec;pi.exec=async(...args)=>{const r=await original(...args);const receipt=JSON.parse(r.stdout);
  receipt.workspace_path_sha256='0'.repeat(64);return {...r,stdout:JSON.stringify(receipt)};};
- register(pi);assert.equal((await tools[0].execute('1',{verifier_id:'check'},undefined,undefined,{cwd:root})).isError,true);
+ register(pi);await assert.rejects(tools[0].execute('1',{verifier_id:'check'},undefined,undefined,{cwd:root}),/revalidation_failed/);
 }));
 test('passing receipt cannot claim a nonzero process exit',async()=>fixture(async({pi,tools,root})=>{
  const original=pi.exec;pi.exec=async(...args)=>{const r=await original(...args);const receipt=JSON.parse(r.stdout);
  receipt.returncode=2;return {...r,stdout:JSON.stringify(receipt)};};
- register(pi);assert.equal((await tools[0].execute('1',{verifier_id:'check'},undefined,undefined,{cwd:root})).isError,true);
+ register(pi);await assert.rejects(tools[0].execute('1',{verifier_id:'check'},undefined,undefined,{cwd:root}),/revalidation_failed/);
+}));
+
+// Issue #10: failures reach the REAL pinned Pi agent loop as errors; a valid
+// receipt that reports a failing test is a successful tool result.
+test('runner failure is a Pi tool error; a failed-test receipt is not',async()=>fixture(async({pi,tools,root})=>{
+ register(pi);
+ const denied=await runToolThroughPi(tools,'revalidate_evidence',{verifier_id:'not-registered'},root);
+ assert.equal(denied.end.isError,true);assert.equal(denied.result.isError,true);
+ assert.deepEqual(JSON.parse(denied.text),{error:'revalidation_failed',exception:'Error'});
+ writeFileSync(join(root,'check.py'),'assert 1 == 2\n');
+ const failing=await runToolThroughPi(tools,'revalidate_evidence',{verifier_id:'check'},root);
+ assert.equal(failing.result.isError,false);assert.equal(JSON.parse(failing.text).passed,false);
 }));

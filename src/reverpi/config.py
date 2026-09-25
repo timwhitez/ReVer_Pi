@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlsplit
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 
 class StrictModel(BaseModel):
@@ -155,12 +155,63 @@ class OnlineProjectionConfig(StrictModel):
     keep_recent_results: int = Field(1, ge=1, le=100)
     max_trace_events: int = Field(400, ge=1, le=10000)
     max_trace_bytes: int = Field(67_108_864, ge=1024, le=1_073_741_824)
+    # Who vouches for a live (non-mock) projection run. research_profile admits only
+    # the frozen research identities below; operator_declared lets an operator run an
+    # UNCERTIFIED model under an explicit capability contract (see online_admission).
+    admission: Literal["research_profile", "operator_declared"] = "research_profile"
 
     @model_validator(mode="after")
     def check_projection(self):
         if self.excerpt_bytes >= self.min_observation_bytes:
             raise ValueError("Projection excerpt must be smaller than the observation threshold")
         return self
+
+    @model_serializer(mode="wrap")
+    def _stable_identity(self, handler):
+        # The default is omitted so frozen research configs keep byte-identical digests.
+        data = handler(self)
+        if self.admission == "research_profile":
+            data.pop("admission", None)
+        return data
+
+
+# Live projection identities recorded by the research programme. A name here is a
+# research identity, not evidence that another route with the same label is capable.
+RESEARCH_PROJECTION_MODELS = frozenset({"deepseek-flash", "gpt-6-luna"})
+CERTIFIED_PROJECTION_ENVELOPE = {"effort": "low", "concurrency": 1}
+
+
+def online_admission(provider: "Provider", study: "StudyConfig") -> dict:
+    """Zero-network admission decision for online projection; never a compatibility proof."""
+    mode = study.online_projection.mode
+    profile = study.online_projection.admission
+    report: dict[str, Any] = {"mode": mode, "admission": profile, "model": provider.model,
+                              "protocol": provider.protocol, "certified": False, "problems": []}
+    if mode == "off":
+        report.update(allowed=True, basis="projection_off")
+        return report
+    if provider.mock:
+        report.update(allowed=True, basis="mock_provider_protocol_only")
+        return report
+    problems = report["problems"]
+    for key, required in CERTIFIED_PROJECTION_ENVELOPE.items():
+        if getattr(provider, key) != required:
+            problems.append(f"provider.{key} must be {required!r} for live online projection (got {getattr(provider, key)!r})")
+    if profile == "research_profile":
+        if provider.model not in RESEARCH_PROJECTION_MODELS:
+            problems.append(f"provider.model {provider.model!r} is not a frozen research identity "
+                            f"({', '.join(sorted(RESEARCH_PROJECTION_MODELS))}); renaming a model does not make it one. "
+                            "To run an uncertified model, set online_projection.admission: operator_declared "
+                            "and provider.expected_response_model")
+        report["certified"] = not problems
+        basis = "frozen_research_identity"
+    else:
+        if not provider.expected_response_model:
+            problems.append("operator_declared admission requires provider.expected_response_model so that "
+                            "the ledger enforces the declared response identity")
+        basis = "operator_declared_uncertified"
+    report.update(allowed=not problems, basis=basis)
+    return report
 
 
 class StudyConfig(StrictModel):

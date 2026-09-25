@@ -21,12 +21,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import Field
-from .config import Provider, StudyConfig, StrictModel
+from .config import Provider, StudyConfig, StrictModel, online_admission
 from .errors import LabError
 from .ledger import Ledger
 from .memory import Archive, Compressor, Memory, Record, METHODS
 from .protocols import Message, validate_messages
-from .transport import APIClient
+from .transport import APIClient, DISPATCH_GUARD
 from .online_projection import ObservationMeta, ProjectionStore
 from .util import canonical, digest, safe_id, source_manifest, strict_json_loads, seal_cache, unseal_cache
 
@@ -169,9 +169,9 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
     """
     if set(study.methods) - (set(METHODS) | {"pi_original", "pi_native"}):
         raise ValueError("Unknown gateway compression method")
-    if study.online_projection.mode != "off" and not provider.mock:
-        if provider.model not in {"deepseek-flash", "gpt-6-luna"} or provider.effort != "low" or provider.concurrency != 1:
-            raise LabError("online_profile", "Live research projection requires an approved model / low / concurrency 1")
+    admission = online_admission(provider, study)
+    if not admission["allowed"]:
+        raise LabError("online_profile", "Online projection not admitted: " + "; ".join(admission["problems"]))
     run = Path(run)
     run.mkdir(parents=True, exist_ok=True, mode=0o700)
     ledger = Ledger(run / "ledger.sqlite", study.budget)
@@ -199,7 +199,7 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
     app = FastAPI(title="ReVer-Pi private gateway", version="0.1.3rc4", docs_url=None, redoc_url=None,
                   openapi_url=None, lifespan=lifespan)
     app.state.client, app.state.sessions, app.state.ledger = client, sessions, ledger
-    app.state.projection = projection
+    app.state.projection, app.state.archive = projection, archive
 
     @app.exception_handler(LabError)
     async def lab_error(request: Request, err: LabError):
@@ -247,23 +247,38 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
             raise LabError("method_not_in_plan", "Session method was not declared in this gateway's frozen configuration")
         return state
 
+    def revoked(session_id: str) -> bool:
+        state = sessions.get(session_id)
+        return bool(state["disabled"]) or state["expires"] <= time.time()
+
+    def require_live(session_id: str):
+        """Pre-dispatch check: a revoked or expired session gets no new upstream attempt."""
+        if revoked(session_id):
+            raise LabError("session_revoked", "Session was revoked before dispatch; no upstream request was sent")
+
     async def guarded(work, request: Request, session_id: str):
-        """Revoke/disconnect cancels upstream work; unknown billing remains reserved."""
-        task = asyncio.create_task(work)
+        """Revoke/disconnect cancels upstream work; unknown billing remains reserved.
+
+        Queued work re-checks the session after concurrency/rate admission (and on
+        every retry) via DISPATCH_GUARD, which the task inherits from this context.
+        """
+        token = DISPATCH_GUARD.set(lambda: require_live(session_id))
+        try:
+            task = asyncio.create_task(work)
+        finally:
+            DISPATCH_GUARD.reset(token)
         try:
             while not task.done():
                 done, _ = await asyncio.wait({task}, timeout=.25)
                 if done:
                     break
-                state = sessions.get(session_id)
-                if state["disabled"] or state["expires"] <= time.time():
+                if revoked(session_id):
                     raise LabError("session_revoked", "Session was revoked while the request was executing", ambiguous=True)
                 if await request.is_disconnected():
                     raise LabError("client_disconnected", "Client disconnected; possible dispatched work remains reserved", ambiguous=True)
             result = await task
             # Completion can win the polling race; revocation still wins delivery.
-            state = sessions.get(session_id)
-            if state["disabled"] or state["expires"] <= time.time():
+            if revoked(session_id):
                 raise LabError("session_revoked", "Session was revoked before response delivery", ambiguous=True)
             return result
         finally:
@@ -356,9 +371,10 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
                                                   messages, body.observation_meta, archive)
                     sent = [Message.from_dict(m) for m in prepared["sent_messages"]]
                 if state["method"] != "pi_original":
-                    for message in messages:
-                        if message.content:
-                            archive.put(state["id"], message.content)
+                    # One batch; tool results already verified by prepare are not re-checked.
+                    verified = {m.content for m in messages if m.role == "tool"} if prepared is not None else set()
+                    archive.put_many(state["id"], [m.content for m in messages
+                                                   if m.content and m.content not in verified])
                 # Pairing can stop BEFORE any model claim/reservation. It never
                 # edits counters or turns an unresolved upstream call into a replay.
                 work = (completion_backend(state=state, body=body, sent=sent, prepared=prepared)

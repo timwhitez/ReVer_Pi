@@ -33,11 +33,17 @@ def doctor(args):
             "executables":{n:shutil.which(n) for n in ("node","npm","docker","harbor")},
             "network_called":False,"code_sha":digest(source_manifest(ROOT)),
             "pi_package_installed":(ROOT/"pi/node_modules/@earendil-works/pi-coding-agent/package.json").exists()}
-    if args.provider:
-        p=load(args.provider,Provider)
+    p=load(args.provider,Provider) if args.provider else None
+    if p is not None:
         info["provider"]={"protocol":p.protocol,"model":p.model,"mock":p.mock,"requested_effort":p.effort,
                           "mapped_effort":p.effort_map[p.effort],"secret_present":p.mock or bool(os.environ.get(p.api_key_env)),
                           "currency_pricing_configured":p.prices.configured,"compatibility":"NOT_VERIFIED_WITH_LIVE_PROVIDER"}
+    if args.config:
+        from .config import online_admission
+        study=load(args.config,StudyConfig)
+        info["online_projection"]=(online_admission(p,study) if p is not None else
+            {"mode":study.online_projection.mode,"admission":study.online_projection.admission,
+             "allowed":None,"note":"pass --provider to evaluate admission for a Provider profile"})
     if args.out: atomic_write(Path(args.out),canonical(info))
     return info
 
@@ -46,7 +52,8 @@ def parser():
     p=argparse.ArgumentParser(prog="reverpi",description="ReVer-Pi: evidence-preserving context projection gateway and CLI for Pi agents")
     sub=p.add_subparsers(dest="command",required=True)
     d=sub.add_parser("doctor",help="Offline environment/config inspection; no paid request")
-    d.add_argument("--provider");d.add_argument("--out")
+    d.add_argument("--provider");d.add_argument("--config",help="StudyConfig: report online-projection admission (no network)")
+    d.add_argument("--out")
     sub.add_parser("methods",help="List implemented algorithms, not the 40-item literature inventory")
     f=sub.add_parser("fixtures",help="Generate SEARCH-ONLY protocol fixtures, never an external benchmark")
     f.add_argument("--out",default="data/fixtures");f.add_argument("--count",type=int,default=12)
@@ -72,8 +79,11 @@ def parser():
     s=sub.add_parser("session-revoke");s.add_argument("--run",required=True);s.add_argument("--id",required=True)
     an=sub.add_parser("analyze");an.add_argument("--run",required=True);an.add_argument("--baseline",default="full");an.add_argument("--unseal",action="store_true")
     an.add_argument("--out")
-    co=sub.add_parser("costs");co.add_argument("--run",required=True);co.add_argument("--config",default="configs/pilot.yaml")
-    re=sub.add_parser("reconcile");re.add_argument("--run",required=True);re.add_argument("--config",default="configs/pilot.yaml")
+    co=sub.add_parser("costs",help="Read-only ledger summary of an existing run; creates nothing")
+    co.add_argument("--run",required=True);co.add_argument("--cell",help="Limit the summary to one session/cell")
+    re=sub.add_parser("reconcile",help="Explicit audited write: settle an unknown attempt from external evidence")
+    re.add_argument("--run",required=True)
+    re.add_argument("--config",help="Optional StudyConfig; its budget must equal the ledger's bound budget")
     re.add_argument("--attempt",required=True,type=int);re.add_argument("--tokens",required=True,type=int);re.add_argument("--usd",required=True,type=float);re.add_argument("--evidence",required=True)
     pi=sub.add_parser("pi-run");pi.add_argument("--cwd",required=True);pi.add_argument("--prompt-file",required=True);pi.add_argument("--out",required=True)
     pi.add_argument("--gateway",default="http://127.0.0.1:8765");pi.add_argument("--token-file",required=True)
@@ -184,9 +194,16 @@ def execute(args):
         if manifest["track"] == "native_pi_harbor":
             report["note"] = "Official native task rewards, predetermined primary repeat=0. Missing trials remain unknown; cluster inference depends on curator provenance. Ledger costs exclude Docker/host billing."
         atomic_write(Path(args.out) if args.out else run/"analysis.json",canonical(report));return report
-    if cmd in {"costs","reconcile"}:
-        ledger=Ledger(Path(args.run)/"ledger.sqlite",load(args.config,StudyConfig).budget)
-        if cmd=="reconcile":ledger.reconcile(args.attempt,args.tokens,args.usd,args.evidence)
+    if cmd=="costs":
+        from .ledger import read_totals
+        return read_totals(Path(args.run)/"ledger.sqlite",args.cell)
+    if cmd=="reconcile":
+        from .ledger import bound_identity
+        path=Path(args.run)/"ledger.sqlite"
+        ledger=Ledger.open_existing(path)  # Schema-checked; never creates or repairs a ledger.
+        if args.config and canonical(load(args.config,StudyConfig).budget.model_dump())!=bound_identity(path,"budget"):
+            raise LabError("identity_changed","--config budget differs from the budget bound in this ledger")
+        ledger.reconcile(args.attempt,args.tokens,args.usd,args.evidence)
         return ledger.totals()
     if cmd=="development-selection":
         from .selection import select_development

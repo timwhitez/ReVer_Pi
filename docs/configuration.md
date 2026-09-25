@@ -60,6 +60,28 @@ Examples: `configs/provider.chat.example.yaml`, `configs/provider.responses.exam
 | `excerpt_bytes` | 1024 | Bytes retained inline; must be smaller than the threshold |
 | `full_exposures` | 2 | Times an observation stays complete before masking |
 | `keep_recent_results` | 1 | Most recent results never masked |
+| `admission` | `research_profile` | Who vouches for a live run: `research_profile` or `operator_declared` (below) |
+
+### Online projection admission
+
+`mode: off` is always admitted, and the protocol-only `mock` Provider is admitted for local checks.
+A **live** Provider with `mode: observe` or `apply` must pass one of two admission profiles, checked
+before any file is created or request is sent:
+
+| Profile | Admits | Status |
+|---|---|---|
+| `research_profile` (default) | `model` ∈ {`deepseek-flash`, `gpt-6-luna`}, `effort: low`, `concurrency: 1` | The only combinations exercised by the recorded research runs. Changing any of them is refused, and so is reusing an old plan under a new identity |
+| `operator_declared` | Any `model`, with `effort: low`, `concurrency: 1` and a required `expected_response_model` that the ledger enforces on every response | **Configurable but not certified.** You vouch for the route; no compatibility, quality or savings claim follows |
+
+A model name is an identity, not a capability: renaming a local model to a research label does not
+make it the research model. Check a configuration without any network access:
+
+```bash
+reverpi doctor --provider configs/provider.local.yaml --config configs/pilot.yaml
+```
+
+The `online_projection` block reports `allowed`, `certified`, `basis`, and a `problems` list naming
+each unmet constraint. The gateway refuses with the same list (`online_profile`).
 
 ## Methods
 
@@ -84,7 +106,7 @@ Examples: `configs/provider.chat.example.yaml`, `configs/provider.responses.exam
 ```bash
 reverpi gateway --provider CONFIG --config STUDY --out RUN_DIR \
   --host 127.0.0.1 --port 8765 [--allow-paid] [--allow-network]
-reverpi session-create --run RUN_DIR --id ID --method METHOD --token-file FILE [--ttl SECONDS]
+reverpi session-create --run RUN_DIR --id ID --method METHOD --token-file FILE [--ttl 86400]
 reverpi session-revoke --run RUN_DIR --id ID
 ```
 
