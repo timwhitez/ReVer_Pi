@@ -7,6 +7,14 @@ import { randomUUID } from "node:crypto";
 import registerRevalidation from "./revalidation-extension.ts";
 import { API, PROVIDER, canonicalMessages, causeChain, makeEnvelope, observationMetadata, recordsFromMessages, safeGateway, sha, usage, type Obj } from "./core.ts";
 
+/** Pi marks a tool result as failed only when execute() throws; a returned
+ * `isError` field is ignored by the pinned agent loop. The thrown message keeps
+ * the bounded, sanitized gateway kind. A tool failure is reported to the model;
+ * it does not by itself stop the task. */
+function toolFailure(error: unknown, fallback: string): Error {
+  return new Error(error instanceof Error ? error.message : fallback);
+}
+
 export default async function extension(pi: ExtensionAPI) {
   const endpoint = safeGateway(process.env.REVER_GATEWAY_URL ?? "http://127.0.0.1:8765");
   const token = process.env.REVER_SESSION_TOKEN;
@@ -119,7 +127,7 @@ export default async function extension(pi: ExtensionAPI) {
         async execute(toolCallId, params, signal) {
           try { const result = await request("/recover",{op:sha({toolCallId,params}),...params},signal);
             return {content:[{type:"text",text:JSON.stringify(result)}],details:{archived:true}};
-          } catch(error) { return {content:[{type:"text",text:error instanceof Error ? error.message : "Recovery failed"}],details:undefined,isError:true}; }
+          } catch(error) { throw toolFailure(error, "Recovery failed"); }
         }
       });
     } else {
@@ -138,7 +146,7 @@ export default async function extension(pi: ExtensionAPI) {
           const result = await request("/recover",{op:sha({toolName,toolCallId,params}),chars:Math.min(2000,session.recovery.max_chars),...params},signal);
           return {content:[{type:"text" as const,text:JSON.stringify(result)}],details:{archived:true}};
         } catch(error) {
-          return {content:[{type:"text" as const,text:error instanceof Error ? error.message : "Recovery failed"}],details:undefined,isError:true};
+          throw toolFailure(error, "Recovery failed");
         }
       };
       pi.registerTool({

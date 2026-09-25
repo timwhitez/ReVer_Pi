@@ -97,8 +97,8 @@ for(const [name,args] of [
  ['search_evidence',{query:'x',start:1}],['search_evidence',{query:'x',chars:true}]
 ]) test('split rejects invalid arguments without HTTP '+name+' '+JSON.stringify(args),async()=>{
  const h=await setup('mask',{recovery:{interface:'split_v1',max_chars:999,max_calls:3}});
- try{const n=h.calls.length;const r=await h.tools.find(t=>t.name===name).execute('bad',args);
-  assert.equal(r.isError,true);assert.match(r.content[0].text,/recovery_arguments/);assert.equal(h.calls.length,n);
+ try{const n=h.calls.length;
+  await assert.rejects(h.tools.find(t=>t.name===name).execute('bad',args),/recovery_arguments/);assert.equal(h.calls.length,n);
  }finally{h.restore();}
 });
 test('split valid read and search share server quota route, default fits quota',async()=>{
