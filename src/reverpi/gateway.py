@@ -21,7 +21,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import Field
-from .config import Provider, StudyConfig, StrictModel
+from .config import Provider, StudyConfig, StrictModel, online_admission
 from .errors import LabError
 from .ledger import Ledger
 from .memory import Archive, Compressor, Memory, Record, METHODS
@@ -169,9 +169,9 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
     """
     if set(study.methods) - (set(METHODS) | {"pi_original", "pi_native"}):
         raise ValueError("Unknown gateway compression method")
-    if study.online_projection.mode != "off" and not provider.mock:
-        if provider.model not in {"deepseek-flash", "gpt-6-luna"} or provider.effort != "low" or provider.concurrency != 1:
-            raise LabError("online_profile", "Live research projection requires an approved model / low / concurrency 1")
+    admission = online_admission(provider, study)
+    if not admission["allowed"]:
+        raise LabError("online_profile", "Online projection not admitted: " + "; ".join(admission["problems"]))
     run = Path(run)
     run.mkdir(parents=True, exist_ok=True, mode=0o700)
     ledger = Ledger(run / "ledger.sqlite", study.budget)

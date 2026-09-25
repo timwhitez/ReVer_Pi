@@ -38,6 +38,12 @@ def doctor(args):
         info["provider"]={"protocol":p.protocol,"model":p.model,"mock":p.mock,"requested_effort":p.effort,
                           "mapped_effort":p.effort_map[p.effort],"secret_present":p.mock or bool(os.environ.get(p.api_key_env)),
                           "currency_pricing_configured":p.prices.configured,"compatibility":"NOT_VERIFIED_WITH_LIVE_PROVIDER"}
+    if args.config:
+        from .config import online_admission
+        study=load(args.config,StudyConfig)
+        info["online_projection"]=(online_admission(load(args.provider,Provider),study) if args.provider else
+            {"mode":study.online_projection.mode,"admission":study.online_projection.admission,
+             "allowed":None,"note":"pass --provider to evaluate admission for a Provider profile"})
     if args.out: atomic_write(Path(args.out),canonical(info))
     return info
 
@@ -46,7 +52,8 @@ def parser():
     p=argparse.ArgumentParser(prog="reverpi",description="ReVer-Pi: evidence-preserving context projection gateway and CLI for Pi agents")
     sub=p.add_subparsers(dest="command",required=True)
     d=sub.add_parser("doctor",help="Offline environment/config inspection; no paid request")
-    d.add_argument("--provider");d.add_argument("--out")
+    d.add_argument("--provider");d.add_argument("--config",help="StudyConfig: report online-projection admission (no network)")
+    d.add_argument("--out")
     sub.add_parser("methods",help="List implemented algorithms, not the 40-item literature inventory")
     f=sub.add_parser("fixtures",help="Generate SEARCH-ONLY protocol fixtures, never an external benchmark")
     f.add_argument("--out",default="data/fixtures");f.add_argument("--count",type=int,default=12)
