@@ -1,0 +1,24 @@
+# Online request-boundary projection with the split recovery tools.
+# Use with a `mask` session; a `pi_original` session on the same gateway is the
+# unprojected baseline. Live Providers also need an admission profile: see
+# docs/configuration.md#online-projection-admission. Not a quality or savings claim.
+name: online-projection-example
+methods:
+- mask
+- pi_original
+split: search
+compression:
+  recovery_calls: 3
+  recovery_chars: 6000
+  recovery_search_mode: match
+online_projection:
+  mode: apply              # observe records decisions without changing requests
+  recovery_interface: split_v1
+  min_observation_bytes: 10240
+  excerpt_bytes: 1024
+  full_exposures: 2
+  keep_recent_results: 1
+budget:
+  max_total_tokens: 2000000
+  max_attempts: 200
+  per_cell_tokens: 500000

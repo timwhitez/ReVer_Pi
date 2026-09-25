@@ -106,7 +106,7 @@ each unmet constraint. The gateway refuses with the same list (`online_profile`)
 ```bash
 reverpi gateway --provider CONFIG --config STUDY --out RUN_DIR \
   --host 127.0.0.1 --port 8765 [--allow-paid] [--allow-network]
-reverpi session-create --run RUN_DIR --id ID --method METHOD --token-file FILE [--ttl SECONDS]
+reverpi session-create --run RUN_DIR --id ID --method METHOD --token-file FILE [--ttl 86400]
 reverpi session-revoke --run RUN_DIR --id ID
 ```
 
