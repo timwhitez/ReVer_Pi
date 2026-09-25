@@ -72,8 +72,11 @@ def parser():
     s=sub.add_parser("session-revoke");s.add_argument("--run",required=True);s.add_argument("--id",required=True)
     an=sub.add_parser("analyze");an.add_argument("--run",required=True);an.add_argument("--baseline",default="full");an.add_argument("--unseal",action="store_true")
     an.add_argument("--out")
-    co=sub.add_parser("costs");co.add_argument("--run",required=True);co.add_argument("--config",default="configs/pilot.yaml")
-    re=sub.add_parser("reconcile");re.add_argument("--run",required=True);re.add_argument("--config",default="configs/pilot.yaml")
+    co=sub.add_parser("costs",help="Read-only ledger summary of an existing run; creates nothing")
+    co.add_argument("--run",required=True);co.add_argument("--cell",help="Limit the summary to one session/cell")
+    re=sub.add_parser("reconcile",help="Explicit audited write: settle an unknown attempt from external evidence")
+    re.add_argument("--run",required=True)
+    re.add_argument("--config",help="Optional StudyConfig; its budget must equal the ledger's bound budget")
     re.add_argument("--attempt",required=True,type=int);re.add_argument("--tokens",required=True,type=int);re.add_argument("--usd",required=True,type=float);re.add_argument("--evidence",required=True)
     pi=sub.add_parser("pi-run");pi.add_argument("--cwd",required=True);pi.add_argument("--prompt-file",required=True);pi.add_argument("--out",required=True)
     pi.add_argument("--gateway",default="http://127.0.0.1:8765");pi.add_argument("--token-file",required=True)
@@ -184,9 +187,13 @@ def execute(args):
         if manifest["track"] == "native_pi_harbor":
             report["note"] = "Official native task rewards, predetermined primary repeat=0. Missing trials remain unknown; cluster inference depends on curator provenance. Ledger costs exclude Docker/host billing."
         atomic_write(Path(args.out) if args.out else run/"analysis.json",canonical(report));return report
-    if cmd in {"costs","reconcile"}:
-        ledger=Ledger(Path(args.run)/"ledger.sqlite",load(args.config,StudyConfig).budget)
-        if cmd=="reconcile":ledger.reconcile(args.attempt,args.tokens,args.usd,args.evidence)
+    if cmd=="costs":
+        from .ledger import read_totals
+        return read_totals(Path(args.run)/"ledger.sqlite",args.cell)
+    if cmd=="reconcile":
+        path=Path(args.run)/"ledger.sqlite"
+        ledger=Ledger(path,load(args.config,StudyConfig).budget) if args.config and path.is_file() else Ledger.open_existing(path)
+        ledger.reconcile(args.attempt,args.tokens,args.usd,args.evidence)
         return ledger.totals()
     if cmd=="development-selection":
         from .selection import select_development

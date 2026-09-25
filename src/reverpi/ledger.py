@@ -26,7 +26,80 @@ def nanos(usd: float) -> int:
     return math.ceil(usd * NANO)
 
 
+# Columns the accounting queries depend on. A file lacking any of them is not a
+# ReVer-Pi ledger and is rejected instead of being "repaired" into an empty one.
+REQUIRED_SCHEMA = {
+    "meta": {"key", "value"},
+    "operations": {"op", "payload_sha", "cell", "state", "result", "error", "created"},
+    "attempts": {"id", "op", "cell", "provider", "state", "started", "reserve_tokens", "reserve_nano",
+                 "actual_tokens", "actual_nano", "raw_usage", "request_id", "status", "error_kind"},
+}
+
+
+def _totals(db: sqlite3.Connection, cell: str | None = None) -> dict:
+    t, n, count = Ledger._spent(db, cell)
+    clause, args = (" WHERE cell=?", (cell,)) if cell is not None else ("", ())
+    known = db.execute("SELECT COALESCE(SUM(actual_tokens),0),COALESCE(SUM(actual_nano),0),"
+                       "COALESCE(SUM(actual_tokens IS NULL),0),COALESCE(SUM(actual_nano IS NULL),0) FROM attempts" + clause, args).fetchone()
+    return {"attempts": count, "accounted_tokens": t, "accounted_usd": n / NANO,
+            "known_tokens": known[0], "known_usd": known[1] / NANO, "unknown_attempts": known[2], "unknown_currency_attempts": known[3], "currency_is_fully_known": known[3] == 0}
+
+
+@contextlib.contextmanager
+def _read_only(path: Path) -> Iterator[sqlite3.Connection]:
+    """Open an EXISTING ledger without creating, migrating or re-binding anything.
+
+    mode=ro never writes ledger content; SQLite may still maintain its own -wal/-shm
+    sidecars so that a consistent snapshot of an active WAL ledger can be read.
+    """
+    path = Path(path)
+    if not path.is_file():
+        raise LabError("ledger_missing", "No ledger exists at this path; nothing was created")
+    try:
+        db = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=30, isolation_level=None)
+    except sqlite3.Error as exc:
+        raise LabError("ledger_unreadable", "Ledger could not be opened read-only") from exc
+    try:
+        db.row_factory = sqlite3.Row
+        db.execute("PRAGMA query_only=ON")
+        db.execute("PRAGMA busy_timeout=30000")
+        for table, columns in REQUIRED_SCHEMA.items():
+            present = {r["name"] for r in db.execute("SELECT name FROM pragma_table_info(?)", (table,))}
+            if not columns <= present:
+                raise LabError("ledger_schema", "Not a ReVer-Pi ledger (missing or incompatible schema)")
+        if db.execute("SELECT 1 FROM meta WHERE key='budget'").fetchone() is None:
+            raise LabError("ledger_schema", "Ledger has no bound budget identity")
+        db.execute("BEGIN")  # One snapshot for every query below.
+        yield db
+        db.execute("COMMIT")
+    except sqlite3.DatabaseError as exc:
+        raise LabError("ledger_schema", "Not a readable ReVer-Pi ledger") from exc
+    finally:
+        db.close()
+
+
+def read_totals(path: Path, cell: str | None = None) -> dict:
+    """Read-only accounting summary of an existing ledger; needs no runtime config."""
+    with _read_only(path) as db:
+        return _totals(db, cell)
+
+
+def bound_budget(path: Path) -> Budget:
+    """The budget an existing ledger was created with, read without writing."""
+    with _read_only(path) as db:
+        row = db.execute("SELECT value FROM meta WHERE key='budget'").fetchone()
+    try:
+        return Budget.model_validate(json.loads(row["value"]))
+    except ValueError as exc:
+        raise LabError("ledger_schema", "Ledger budget identity is not valid") from exc
+
+
 class Ledger:
+    @classmethod
+    def open_existing(cls, path: Path) -> "Ledger":
+        """Writable handle on an existing ledger using its own bound budget (e.g. reconcile)."""
+        return cls(path, bound_budget(path))
+
     def __init__(self, path: Path, budget: Budget):
         self.path, self.budget = Path(path), budget
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -265,12 +338,7 @@ class Ledger:
 
     def totals(self, cell: str | None = None) -> dict:
         with self.db() as db:
-            t, n, count = self._spent(db, cell)
-            clause, args = (" WHERE cell=?", (cell,)) if cell is not None else ("", ())
-            known = db.execute("SELECT COALESCE(SUM(actual_tokens),0),COALESCE(SUM(actual_nano),0),"
-                               "COALESCE(SUM(actual_tokens IS NULL),0),COALESCE(SUM(actual_nano IS NULL),0) FROM attempts" + clause, args).fetchone()
-            return {"attempts": count, "accounted_tokens": t, "accounted_usd": n / NANO,
-                    "known_tokens": known[0], "known_usd": known[1] / NANO, "unknown_attempts": known[2], "unknown_currency_attempts": known[3], "currency_is_fully_known": known[3] == 0}
+            return _totals(db, cell)
 
     def attempts(self) -> list[dict]:
         with self.db() as db:
