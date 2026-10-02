@@ -5,6 +5,7 @@ Every Provider here is an httpx.MockTransport double; usage figures are syntheti
 import asyncio
 import sqlite3
 import time
+import threading
 import httpx
 import pytest
 from reverpi.config import StudyConfig
@@ -206,3 +207,40 @@ async def test_refused_retry_keeps_earlier_ambiguous_attempt_ambiguous(provider,
     assert len(seen) == 1
     totals = ledger.totals()
     assert totals['attempts'] == 1 and totals['unknown_attempts'] == 1
+
+
+@pytest.mark.asyncio
+async def test_guard_rechecked_after_async_ledger_commit(provider, ledger, monkeypatch):
+    """Revocation during worker admission cannot send a just-reserved attempt."""
+    reserved, release = threading.Event(), threading.Event()
+    revoked, seen = [], []
+    original = ledger.reserve_gated
+    def delayed(*args, **kwargs):
+        value = original(*args, **kwargs)
+        reserved.set()
+        assert release.wait(2)
+        return value
+    monkeypatch.setattr(ledger, 'reserve_gated', delayed)
+    def guard():
+        if revoked:
+            raise LabError('session_revoked', 'revoked before dispatch')
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, json=raw(provider))
+    async with APIClient(provider, ledger, transport=httpx.MockTransport(handler)) as client:
+        token = DISPATCH_GUARD.set(guard)
+        try:
+            task = asyncio.create_task(client.complete([Message('user', 'x')], op='guard', cell='c'))
+        finally:
+            DISPATCH_GUARD.reset(token)
+        async with asyncio.timeout(2):
+            while not reserved.is_set():
+                await asyncio.sleep(.002)
+        revoked.append(True)
+        release.set()
+        with pytest.raises(LabError) as err:
+            await task
+    assert err.value.kind == 'session_revoked' and not err.value.ambiguous
+    assert seen == []
+    attempt = ledger.attempts()[0]
+    assert attempt['actual_tokens'] == 0 and attempt['error_kind'] == 'not_dispatched'

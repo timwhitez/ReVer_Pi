@@ -39,6 +39,33 @@ and bounded, so a search cannot silently return rewritten text.
 Unknown currency, interrupted attempts and reconciled corrections are separate states; totals are
 derived from the rows rather than accumulated in a variable that can drift.
 
+APIClient sends all request-path ledger work, including provider binding and transport audit,
+through one private worker with at most 32 admitted jobs (running plus queued). Queue backpressure,
+the operation lock, claim, rate admission and HTTP work share the original `retry.total_seconds`
+deadline. Each job opens and closes its own connection on the worker. SQLite lock admission waits
+in slices of at most 50ms; cancellation before COMMIT rolls back, while an already committed
+result stays attached to its original operation/attempt. Cancelling one request does not stop
+another request's ledger work. The synchronous CLI retains its existing Ledger interface.
+
+Accounting cleanup has an explicit two-second allowance per attempt: a received usage record is
+retained through caller cancellation, and settlement, response-model accounting, trace and final
+operation persistence share one absolute cleanup deadline. Cancellation does not reset it. Only
+a fully reconciled attempt that permits a retry starts a new accounting allowance; ordinary retry
+work retains the original execution deadline. If that execution deadline expires during accounting,
+the request completes bounded cleanup and cannot dispatch another attempt. A caller can therefore
+take up to the cleanup allowance beyond `retry.total_seconds` while durable cleanup completes.
+Python callers may set
+`ledger_max_pending` and `ledger_cleanup_seconds` on APIClient; these are not provider YAML fields.
+
+When cleanup cannot complete, `ledger_cleanup_timeout` reports an ambiguous outcome. A cancelled
+caller still receives cancellation; this does not certify ledger reconciliation. Durable running
+operations remain `operation_in_doubt` on restart, and reserved/unknown attempts remain charged at
+their planning bound until explicit operator reconciliation. No claim or paid attempt is replayed.
+Use APIClient as an async context manager or await `close()` on its owning event loop. Close rejects
+new requests, cancels ordinary in-flight work, waits for owned accounting and actual transaction
+outcomes, joins the worker, then closes HTTP resources. A cancelled close waiter may await close
+again; its retained close task continues draining. Gateway lifespan performs this shutdown.
+
 **Budgets (`src/reverpi/config.py`)** bind token, attempt, per-cell and disk limits to a study config.
 The gateway refuses to start a dispatch that would breach them.
 

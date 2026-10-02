@@ -257,8 +257,13 @@ async def test_context_admission_is_explicit_not_silent_byte_window(provider,led
 
 @pytest.mark.asyncio
 async def test_total_deadline_reserves_ambiguous(provider,ledger):
-    p=provider.model_copy(update={'retry':provider.retry.model_copy(update={'total_seconds':.02})})
-    async def hang(req):await asyncio.sleep(2)
+    # Claim/reservation now consume this same budget. Leave enough setup margin
+    # to exercise a dispatched attempt rather than a pre-dispatch expiry.
+    p=provider.model_copy(update={'retry':provider.retry.model_copy(update={'total_seconds':1})})
+    dispatched=asyncio.Event()
+    async def hang(req):
+        dispatched.set()
+        await asyncio.sleep(10)
     async with APIClient(p,ledger,transport=httpx.MockTransport(hang)) as c:
         with pytest.raises(LabError,match='deadline'):await c.complete([Message('user','x')],op='x',cell='c')
-    assert ledger.totals()['unknown_attempts']==1
+    assert dispatched.is_set() and ledger.totals()['unknown_attempts']==1

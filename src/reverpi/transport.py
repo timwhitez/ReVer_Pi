@@ -16,6 +16,7 @@ import httpx
 from .config import Provider
 from .errors import LabError, classify_http
 from .ledger import Ledger
+from .async_ledger import AsyncLedger, Operation
 from .protocols import (Completion, Message, build_request, conservative_input_tokens,
                         normalize_usage, parse_completion)
 from .util import digest, strict_json_loads
@@ -206,13 +207,22 @@ class _NoCookies(DefaultCookiePolicy):
 class APIClient:
     """No SDK retry layer. A single retry policy owns all attempts and billing."""
     def __init__(self, provider: Provider, ledger: Ledger, *, transport=None,
-                 sleeper: Callable = asyncio.sleep, random_source=None):
+                 sleeper: Callable = asyncio.sleep, random_source=None,
+                 ledger_max_pending: int = 32, ledger_cleanup_seconds: float = 2):
         self.p, self.ledger = provider, ledger
         self.sleeper = sleeper
         self.rng = random_source or random.Random()
         self.sem = asyncio.Semaphore(provider.concurrency)
         self.dispatch_lock = asyncio.Lock()
+        self.binding_lock = asyncio.Lock()
+        self.provider_bound = False
         self.op_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
+        self.async_ledger = AsyncLedger(ledger, max_pending=ledger_max_pending,
+                                        cleanup_seconds=ledger_cleanup_seconds)
+        self.ledger_owner = contextvars.ContextVar("request_ledger_owner")
+        self.requests: set[asyncio.Task] = set()
+        self.closing = False
+        self.close_task = None
         verify: bool | ssl.SSLContext = True
         if provider.ca_bundle_env:
             import os
@@ -230,13 +240,26 @@ class APIClient:
                                   write=provider.write_seconds, pool=provider.pool_seconds),
             limits=httpx.Limits(max_connections=provider.concurrency, max_keepalive_connections=provider.concurrency))
         self.fingerprint = digest(provider.model_dump())
-        self.ledger.bind("provider:" + provider.name, provider.model_dump())
         b = ledger.budget
         if (b.max_total_usd or b.per_cell_usd) and not provider.prices.configured:
             raise ValueError("Currency limits require a configured frozen price table")
 
     async def close(self):
+        if self.close_task is None:
+            self.closing = True
+            self.close_task = asyncio.create_task(self._close())
+        await asyncio.shield(self.close_task)
+
+    async def _close(self):
+        for task in tuple(self.requests):
+            task.cancel()
+        await asyncio.gather(*tuple(self.requests), return_exceptions=True)
+        await self.async_ledger.close()
         await self.http.aclose()
+
+    async def _ledger_call(self, method, *args, cleanup=False, **kwargs):
+        return await self.async_ledger.call(self.ledger_owner.get(), method, *args,
+                                             cleanup=cleanup, **kwargs)
 
     async def __aenter__(self):
         return self
@@ -262,30 +285,81 @@ class APIClient:
         from .preflight import validate_provider_environment
         validate_provider_environment(self.p)
         payload_sha = digest({"profile": self.fingerprint, "path": path, "body": body})
+        if self.closing:
+            raise LabError("client_closed", "API client is closing")
+        owner = Operation(time.monotonic() + self.p.retry.total_seconds)
+        task = asyncio.current_task()
+        self.requests.add(task)
+        token = self.ledger_owner.set(owner)
         lock = self.op_locks.setdefault(op, asyncio.Lock())
-        async with lock:
-            cached = self.ledger.claim(op, payload_sha, cell)
-            if cached is not None:
-                return cached
-            try:
-                async with asyncio.timeout(self.p.retry.total_seconds):
-                    result = await self._execute(path, body, op, cell, native)
-                self.ledger.finish(op, result=result)
-                return result
-            except asyncio.CancelledError:
-                self.ledger.finish(op, error=LabError("cancelled", "Operation cancelled; possible dispatched attempts remain reserved", ambiguous=True))
-                raise
-            except TimeoutError as exc:
+        acquired = False
+        try:
+            async with asyncio.timeout_at(owner.deadline):
+                await lock.acquire()
+                acquired = True
+                async with self.binding_lock:
+                    if not self.provider_bound:
+                        await self._ledger_call("bind", "provider:" + self.p.name, self.p.model_dump())
+                        self.provider_bound = True
+                cached = await self._ledger_call("claim", op, payload_sha, cell)
+                if cached is not None:
+                    return cached
+                result = await self._execute(path, body, op, cell, native)
+                owner.check()
+            owner.cleanup_deadline = owner.cleanup_deadline or time.monotonic() + self.async_ledger.cleanup_seconds
+            await self._ledger_call("finish", op, result=result, cleanup=True)
+            if owner.cancelled:
+                raise asyncio.CancelledError
+            return result
+        except BaseException as exc:
+            interruptions = owner.interruptions
+            owner.cancel()
+            if isinstance(exc, asyncio.CancelledError):
+                err = LabError("cancelled", "Operation cancelled; possible dispatched attempts remain reserved", ambiguous=True)
+            elif isinstance(exc, TimeoutError):
                 err = LabError("total_timeout", "Total operation deadline exceeded", ambiguous=True)
-                self.ledger.finish(op, error=err)
-                raise err from exc
-            except LabError as err:
-                self.ledger.finish(op, error=err)
-                raise
-            except Exception as exc:
+            elif isinstance(exc, LabError):
+                err = exc
+            elif isinstance(exc, Exception):
                 err = LabError("internal_error", f"Internal {type(exc).__name__}; no automatic resend", ambiguous=True)
-                self.ledger.finish(op, error=err)
-                raise err from exc
+            else:
+                raise
+            try:
+                await self.async_ledger.drain(owner)
+                # A claim/reservation may have COMMITted just as its waiter was
+                # cancelled. Accept its own real result before any further write.
+                def succeeded(job):
+                    return job.future.done() and job.future.exception() is None
+                claimed = any(j.fn == self.ledger.claim and succeeded(j) and j.future.result() is None for j in owner.jobs)
+                finished = any(j.fn == self.ledger.finish and succeeded(j) for j in owner.jobs)
+                settled = {j.args[0] for j in owner.jobs if j.fn == self.ledger.settle and succeeded(j)}
+                for job in tuple(owner.jobs):
+                    if job.fn == self.ledger.reserve_gated and succeeded(job):
+                        aid, _ = job.future.result()
+                        if aid is not None and aid not in settled:
+                            await self._ledger_call("settle", aid, tokens=None, usd=None,
+                                                   error_kind=err.kind, cleanup=True)
+                if claimed and not finished:
+                    await self._ledger_call("finish", op, error=err, cleanup=True)
+            except (TimeoutError, LabError) as cleanup_error:
+                # No replay/parallel finish: durable running/reserved rows are the
+                # existing recovery contract when bounded reconciliation fails.
+                if owner.interruptions > interruptions:
+                    raise asyncio.CancelledError from cleanup_error
+                if not isinstance(exc, asyncio.CancelledError):
+                    raise LabError("ledger_cleanup_timeout", "Ledger cleanup did not complete; operation remains in doubt and reservations remain charged", ambiguous=True) from cleanup_error
+            if owner.interruptions > interruptions:
+                raise asyncio.CancelledError
+            if isinstance(exc, asyncio.CancelledError):
+                raise
+            if err is exc:
+                raise
+            raise err from exc
+        finally:
+            if acquired:
+                lock.release()
+            self.ledger_owner.reset(token)
+            self.requests.discard(task)
 
     async def _execute(self, path, body, op, cell, native):
         p = self.p
@@ -318,9 +392,24 @@ class APIClient:
                                            "operation keep their recorded (possibly unknown) usage",
                                            ambiguous=earlier_ambiguous, status=refused.status) from refused
                     async with self.dispatch_lock:
-                        aid, delay = self.ledger.reserve_gated(
+                        aid, delay = await self._ledger_call("reserve_gated",
                             op, cell, p.name, reserve_tokens, cost,
                             p.requests_per_minute, p.tokens_per_minute)
+                        # Worker/SQLite admission added an await. Recheck the
+                        # original trusted guard before this async owner sends.
+                        if guard is not None:
+                            try:
+                                guard()
+                            except LabError as refused:
+                                if aid is not None:
+                                    await self._ledger_call("settle", aid, tokens=0,
+                                        usd=0 if p.prices.configured else None,
+                                        error_kind="not_dispatched", cleanup=True)
+                                self.ledger_owner.get().check()
+                                if attempt_no:
+                                    raise LabError(refused.kind, "Refused before a retry; earlier attempts keep their recorded usage",
+                                                   ambiguous=earlier_ambiguous, status=refused.status) from refused
+                                raise
                         if aid is not None:
                             break
                     await self.sleeper(delay)
@@ -348,7 +437,7 @@ class APIClient:
                             if isinstance(error_body, dict) and error_body.get("usage") is not None:
                                 # An explicit but invalid usage claim is UNKNOWN, not a zero-cost rejection.
                                 error_tokens, error_usd = normalize_usage(error_body["usage"], p.prices)
-                                self.ledger.settle(aid, tokens=error_tokens, usd=error_usd, raw_usage=error_body["usage"], request_id=request_id, status=status)
+                                await self._ledger_call("settle",aid, tokens=error_tokens, usd=error_usd, raw_usage=error_body["usage"], request_id=request_id, status=status, cleanup=True)
                                 settled = True
                             raise classify_http(status, error_body)
                         if "text/event-stream" in resp.headers.get("content-type", "").lower():
@@ -369,15 +458,19 @@ class APIClient:
                     if not isinstance(raw, dict):
                         raise LabError("malformed_response", "Expected JSON object", ambiguous=True)
                     tokens, usd = normalize_usage(raw.get("usage"), p.prices)
-                    self.ledger.settle(aid, tokens=tokens, usd=usd, raw_usage=raw.get("usage"), request_id=request_id, status=status)
+                    await self._ledger_call("settle",aid, tokens=tokens, usd=usd, raw_usage=raw.get("usage"), request_id=request_id, status=status, cleanup=True)
                     settled = True
                     if native:
+                        self.ledger_owner.get().check()
                         if not isinstance(raw.get("output"), list) or not raw["output"]:
                             raise LabError("empty_compaction", "Native compaction returned no window")
                         completed = True
                         return raw
                     result = parse_completion(p, raw)
-                    self.ledger.observed_model(p.name, result.model, p.expected_response_model)
+                    # A received response retains its identity evidence through
+                    # cancellation during settlement, as well as its known usage.
+                    await self._ledger_call("observed_model", p.name, result.model, p.expected_response_model, cleanup=True)
+                    self.ledger_owner.get().check()
                     completed = True
                     return result.to_dict()
                 except httpx.ConnectError as exc:
@@ -400,29 +493,33 @@ class APIClient:
                 except LabError as err:
                     last = err
                     if err.kind == "model_drift":
-                        self.ledger.stop("model_drift")
+                        await self._ledger_call("stop", "model_drift", cleanup=True)
                 finally:
                     import sys
                     active_exception = sys.exc_info()[1]
+                    owner = self.ledger_owner.get()
+                    if active_exception is not None or owner.cancelled or time.monotonic() >= owner.deadline:
+                        owner.cleanup_deadline = owner.cleanup_deadline or time.monotonic() + self.async_ledger.cleanup_seconds
                     if transport_exception is None and active_exception is not None:
                         transport_exception = exception_signature(active_exception)
-                    record_transport_trace(self.ledger, attempt_id=aid, phase=phase,
+                    await self._ledger_call(record_transport_trace, self.ledger, attempt_id=aid, phase=phase,
                         elapsed_seconds=time.monotonic()-attempt_started, status=status,
                         complete=completed, exception=transport_exception,
                         timeout_config={"read":p.read_seconds,"write":p.write_seconds,
                             "connect":p.connect_seconds,"pool":p.pool_seconds,
-                            "total":p.retry.total_seconds})
+                            "total":p.retry.total_seconds}, cleanup=True)
                     if not settled:
                         # Only explicit admission rejection / pre-send failures get zero.
                         safe_zero = last.kind in {"tls_configuration", "connect_error", "connect_timeout", "authentication", "permission", "quota", "invalid_request", "endpoint_or_model", "rate_limit", "context_overflow", "redirect_rejected"}
-                        self.ledger.settle(aid, tokens=0 if safe_zero else None,
+                        await self._ledger_call("settle",aid, tokens=0 if safe_zero else None,
                                            usd=0 if safe_zero and p.prices.configured else None,
-                                           request_id=request_id, status=status, error_kind=last.kind)
+                                           request_id=request_id, status=status, error_kind=last.kind, cleanup=True)
+            self.ledger_owner.get().check()
             earlier_ambiguous = earlier_ambiguous or last.ambiguous
             if last.retryable:
                 jitter = self.rng.uniform(0, min(p.retry.cap_seconds, p.retry.base_seconds * 2**attempt_no))
                 delay = max(jitter, retry_hint or 0)
-                self.ledger.cooldown(p.name, delay, failure=last.kind != "rate_limit",
+                await self._ledger_call("cooldown",p.name, delay, failure=last.kind != "rate_limit",
                                      threshold=p.retry.circuit_failures, circuit_seconds=p.retry.circuit_cooldown_seconds)
                 if retry_hint is not None and retry_hint > p.retry.max_retry_after_seconds:
                     raise LabError("provider_cooldown", "Retry-After exceeds permitted wait; request not hammered", status=status)
@@ -430,5 +527,9 @@ class APIClient:
                 raise last
             if attempt_no + 1 >= p.retry.max_attempts:
                 raise last
+            self.ledger_owner.get().check()
+            # A fully reconciled safe retry starts a new attempt's accounting
+            # allowance, while its ordinary work retains the original deadline.
+            self.ledger_owner.get().cleanup_deadline = None
             # Delay is owned by the shared gate, including the final failed attempt.
         raise last
