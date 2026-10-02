@@ -47,8 +47,8 @@ in slices of at most 50ms; cancellation before COMMIT rolls back, while an alrea
 result stays attached to its original operation/attempt. Cancelling one request does not stop
 another request's ledger work. The synchronous CLI retains its existing Ledger interface.
 
-Accounting cleanup has an explicit two-second allowance per attempt: a received usage record is
-retained through caller cancellation, and settlement, response-model accounting, trace and final
+Accounting cleanup has an explicit two-second allowance per attempt: committed usage remains
+accounted through caller cancellation, and settlement, response-model accounting, trace and final
 operation persistence share one absolute cleanup deadline. Cancellation does not reset it. Only
 a fully reconciled attempt that permits a retry starts a new accounting allowance; ordinary retry
 work retains the original execution deadline. If that execution deadline expires during accounting,
@@ -65,6 +65,20 @@ Use APIClient as an async context manager or await `close()` on its owning event
 new requests, cancels ordinary in-flight work, waits for owned accounting and actual transaction
 outcomes, joins the worker, then closes HTTP resources. A cancelled close waiter may await close
 again; its retained close task continues draining. Gateway lifespan performs this shutdown.
+
+The same absolute deadline bounds admission and waiting for an already submitted job, including
+a cleanup job queued behind another operation's SQLite lock wait. Expiry signals only that job;
+its actual future and received usage arguments stay owned by the bridge until the worker reports
+the real outcome. A queued expired job performs no writes. Received usage that could not be
+committed within the allowance remains conservatively reserved/unknown, with the operation in
+doubt; it is not reported as durable known usage. Recovery still needs external billing evidence
+and explicit reconciliation. A COMMIT that won the timeout race keeps its durable result; close
+waits for the actual future and joins even when the caller already received an ambiguous error.
+
+Request-path model observation and a model-drift stop share one SQLite transaction. The stop
+commits before the worker can process another queued reservation, and the drift error is raised
+after COMMIT. An aborted transaction never certifies that a stop was persisted. Existing requests
+already dispatched keep their usage records; stopping blocks new paid admission.
 
 **Budgets (`src/reverpi/config.py`)** bind token, attempt, per-cell and disk limits to a study config.
 The gateway refuses to start a dispatch that would breach them.

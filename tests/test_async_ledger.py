@@ -1,5 +1,7 @@
 """SQLite contention tests use actual local connections, never a paid provider."""
 import asyncio
+import contextlib
+import json
 import sqlite3
 import threading
 import time
@@ -468,3 +470,227 @@ async def test_accounting_calls_share_one_cleanup_budget(provider, ledger, monke
     assert ledger.attempts()[0]['actual_tokens'] == (18 if status == 200 else 0)
     with ledger.db() as db:
         assert db.execute("SELECT state FROM operations WHERE op='shared-cleanup'").fetchone()[0] == 'running'
+
+
+@pytest.mark.asyncio
+async def test_submitted_business_job_wait_obeys_its_deadline(ledger):
+    worker = AsyncLedger(ledger)
+    entered = threading.Event()
+    first_owner = Operation(time.monotonic() + 3)
+    second_owner = Operation(time.monotonic() + 3)
+    writer = sqlite3.connect(ledger.path, check_same_thread=False, isolation_level=None)
+    writer.execute('BEGIN IMMEDIATE')
+    safety_release = threading.Timer(.6, writer.rollback)
+    safety_release.start()
+    def blocked_claim():
+        entered.set()
+        return ledger.claim('blocking-owner', 'h', 'c')
+    first = asyncio.create_task(worker.call(first_owner, blocked_claim))
+    try:
+        await wait_thread_event(entered)
+        second_owner.deadline = time.monotonic() + .08
+        start = time.monotonic()
+        with pytest.raises(TimeoutError):
+            await worker.call(second_owner, 'claim', 'queued-owner', 'h', 'c')
+        assert time.monotonic() - start < .25
+        job = second_owner.jobs[0]
+        assert job in worker.jobs and not job.future.done() and not job.future.cancelled()
+        assert job.cancelled.is_set() and not first_owner.cancelled
+        writer.rollback()
+        assert await first is None
+        await worker.drain(second_owner)
+        assert isinstance(job.future.exception(), TimeoutError)
+    finally:
+        safety_release.cancel()
+        safety_release.join()
+        writer.rollback()
+        writer.close()
+        await worker.close()
+    with ledger.db() as db:
+        assert [r[0] for r in db.execute('SELECT op FROM operations')] == ['blocking-owner']
+    assert not worker.thread.is_alive()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('cancel_caller', [False, True])
+async def test_queued_cleanup_deadline_isolated_from_other_sqlite_owner(provider, ledger, monkeypatch, cancel_caller):
+    response_ready, send_response = asyncio.Event(), asyncio.Event()
+    blocking_claim = threading.Event()
+    seen, owners = [], {}
+    original_claim = ledger.claim
+    def claim(op, *args):
+        if op == 'blocking':
+            blocking_claim.set()
+        return original_claim(op, *args)
+    monkeypatch.setattr(ledger, 'claim', claim)
+    async def handler(request):
+        text = json.loads(request.content)['messages'][0]['content']
+        seen.append(text)
+        if text == 'response':
+            response_ready.set()
+            await send_response.wait()
+        return httpx.Response(200, json=raw(provider))
+    client = APIClient(provider, ledger, transport=httpx.MockTransport(handler))
+    original_call = client.async_ledger.call
+    async def record_owner(owner, method, *args, **kwargs):
+        if method == 'claim':
+            owners[args[0]] = owner
+        return await original_call(owner, method, *args, **kwargs)
+    monkeypatch.setattr(client.async_ledger, 'call', record_owner)
+    response = asyncio.create_task(client.complete([Message('user', 'response')], op='response', cell='c'))
+    writer, safety_release, blocking = None, None, None
+    try:
+        await asyncio.wait_for(response_ready.wait(), 3)
+        writer = sqlite3.connect(ledger.path, check_same_thread=False, isolation_level=None)
+        writer.execute('BEGIN IMMEDIATE')
+        safety_release = threading.Timer(3, writer.rollback)
+        safety_release.start()
+        blocking = asyncio.create_task(client.complete([Message('user', 'blocking')], op='blocking', cell='c'))
+        await wait_thread_event(blocking_claim)
+        start = time.monotonic()
+        send_response.set()
+        if cancel_caller:
+            while not any(j.fn == ledger.settle for j in owners['response'].jobs):
+                await asyncio.sleep(.002)
+            response.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await response
+        else:
+            with pytest.raises(LabError) as err:
+                await response
+            assert err.value.kind == 'ledger_cleanup_timeout' and err.value.ambiguous
+        assert time.monotonic() - start < client.async_ledger.cleanup_seconds + .35
+        pending = [j for j in owners['response'].jobs if not j.future.done()]
+        assert pending and all(j in client.async_ledger.jobs and not j.future.cancelled() for j in pending)
+        settlement = next(j for j in pending if j.fn == ledger.settle)
+        # Received usage is still owned as job evidence, but it is not durable.
+        assert settlement.kwargs['tokens'] == 18 and settlement.cancelled.is_set()
+        assert not owners['blocking'].cancelled and not blocking.done()
+        with ledger.db() as db:
+            operation = db.execute("SELECT state FROM operations WHERE op='response'").fetchone()[0]
+            attempt = db.execute("SELECT state,actual_tokens FROM attempts WHERE op='response'").fetchone()
+        assert operation == 'running' and attempt['state'] == 'reserved' and attempt['actual_tokens'] is None
+        writer.rollback()
+        assert (await blocking).text == 'ok'
+        with pytest.raises(LabError, match='in_doubt'):
+            await client.complete([Message('user', 'response')], op='response', cell='c')
+        assert seen == ['response', 'blocking']
+        assert (await client.complete([Message('user', 'later')], op='later', cell='c')).text == 'ok'
+    finally:
+        send_response.set()
+        if safety_release:
+            safety_release.cancel()
+            safety_release.join()
+        if writer:
+            writer.rollback()
+            writer.close()
+        await client.close()
+    assert not client.async_ledger.thread.is_alive() and not client.async_ledger.jobs
+    attempts = {a['op']: a for a in ledger.attempts()}
+    assert attempts['response']['state'] == 'reserved' and attempts['response']['actual_tokens'] is None
+    assert attempts['blocking']['actual_tokens'] == 18 and attempts['later']['actual_tokens'] == 18
+
+
+@pytest.mark.asyncio
+async def test_cleanup_expiry_after_commit_keeps_actual_future_and_close_joins(provider, ledger, monkeypatch):
+    committed, release = threading.Event(), threading.Event()
+    original_finish = ledger.finish
+    def finish(*args, **kwargs):
+        result = original_finish(*args, **kwargs)
+        committed.set()
+        assert release.wait(5)
+        return result
+    monkeypatch.setattr(ledger, 'finish', finish)
+    client = APIClient(provider, ledger, transport=httpx.MockTransport(lambda r: httpx.Response(200, json=raw(provider))))
+    owner = None
+    original_call = client.async_ledger.call
+    async def call(op_owner, method, *args, **kwargs):
+        nonlocal owner
+        owner = op_owner
+        return await original_call(op_owner, method, *args, **kwargs)
+    monkeypatch.setattr(client.async_ledger, 'call', call)
+    task = asyncio.create_task(client.complete([Message('user', 'x')], op='postcommit', cell='c'))
+    try:
+        await wait_thread_event(committed)
+        with pytest.raises(LabError) as err:
+            await task
+        assert err.value.kind == 'ledger_cleanup_timeout' and err.value.ambiguous
+        job = next(j for j in owner.jobs if j.fn == ledger.finish)
+        assert job in client.async_ledger.jobs and not job.future.done() and not job.future.cancelled()
+        # The waiter timed out after COMMIT. Durable results remain authoritative;
+        # no second finish, zeroing or automatic paid replay is allowed.
+        with ledger.db() as db:
+            row = db.execute("SELECT state,payload_sha FROM operations WHERE op='postcommit'").fetchone()
+        assert row['state'] == 'complete' and ledger.totals()['known_tokens'] == 18
+        assert ledger.claim('postcommit', row['payload_sha'], 'c')['text'] == 'ok'
+        close = asyncio.create_task(client.close())
+        await asyncio.sleep(.01)
+        assert not close.done()  # The noncooperative post-COMMIT job is still real.
+        release.set()
+        await close
+        assert job.future.done() and job.future.exception() is None
+        assert not client.async_ledger.thread.is_alive() and not client.async_ledger.jobs
+    finally:
+        release.set()
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_atomic_drift_stop_rollback_is_not_reported_as_committed(ledger, monkeypatch):
+    worker = AsyncLedger(ledger, cleanup_seconds=.15)
+    owner = Operation(time.monotonic() + 3)
+    written, release = threading.Event(), threading.Event()
+    original_db = ledger.db
+    @contextlib.contextmanager
+    def before_commit(*args, **kwargs):
+        with original_db(*args, **kwargs) as db:
+            yield db
+            if db.in_transaction and db.execute("SELECT 1 FROM meta WHERE key='operator_stop'").fetchone():
+                written.set()
+                assert release.wait(3)
+    monkeypatch.setattr(ledger, 'db', before_commit)
+    task = asyncio.create_task(worker.call(owner, 'observed_model', 'p', 'wrong', 'expected',
+                                           stop_on_drift=True, cleanup=True))
+    try:
+        await wait_thread_event(written)
+        with pytest.raises(TimeoutError):
+            await task
+        job = owner.jobs[0]
+        assert not job.future.done() and job in worker.jobs
+        assert ledger.stop_reason() is None  # Uncommitted stop is not durable.
+    finally:
+        release.set()
+        await worker.close()
+    assert isinstance(job.future.exception(), TimeoutError)
+    assert ledger.stop_reason() is None and not worker.thread.is_alive()
+
+
+@pytest.mark.asyncio
+async def test_atomic_drift_stop_committed_before_late_error_result(ledger, monkeypatch):
+    worker = AsyncLedger(ledger, cleanup_seconds=.3)
+    owner = Operation(time.monotonic() + 3)
+    committed, release = threading.Event(), threading.Event()
+    original_observe = ledger.observed_model
+    def observe(*args, **kwargs):
+        try:
+            return original_observe(*args, **kwargs)
+        except LabError as err:
+            assert err.kind == 'model_drift'
+            committed.set()  # The combined action raises only after stop COMMIT.
+            assert release.wait(3)
+            raise
+    monkeypatch.setattr(ledger, 'observed_model', observe)
+    task = asyncio.create_task(worker.call(owner, 'observed_model', 'p', 'wrong', 'expected',
+                                           stop_on_drift=True, cleanup=True))
+    try:
+        await wait_thread_event(committed)
+        with pytest.raises(TimeoutError):
+            await task
+        job = owner.jobs[0]
+        assert job in worker.jobs and not job.future.done() and not job.future.cancelled()
+        assert ledger.stop_reason() == 'model_drift'
+    finally:
+        release.set()
+        await worker.close()
+    assert isinstance(job.future.exception(), LabError) and job.future.exception().kind == 'model_drift'
+    assert ledger.stop_reason() == 'model_drift' and not worker.thread.is_alive()

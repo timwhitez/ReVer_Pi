@@ -3,6 +3,7 @@
 Every Provider here is an httpx.MockTransport double; usage figures are synthetic.
 """
 import asyncio
+import json
 import sqlite3
 import time
 import threading
@@ -244,3 +245,58 @@ async def test_guard_rechecked_after_async_ledger_commit(provider, ledger, monke
     assert seen == []
     attempt = ledger.attempts()[0]
     assert attempt['actual_tokens'] == 0 and attempt['error_kind'] == 'not_dispatched'
+
+
+@pytest.mark.asyncio
+async def test_model_drift_stop_commits_before_queued_reservation(provider, ledger, monkeypatch):
+    """A queued paid admission cannot overtake the drift observation's stop."""
+    provider = provider.model_copy(update={'concurrency': 2})
+    ledger.observed_model(provider.name, provider.model, None)
+    observation_started, allow_observation = threading.Event(), threading.Event()
+    b_ready, admit_b = asyncio.Event(), asyncio.Event()
+    original_observe = ledger.observed_model
+    def observe(*args, **kwargs):
+        observation_started.set()
+        assert allow_observation.wait(3)
+        return original_observe(*args, **kwargs)
+    monkeypatch.setattr(ledger, 'observed_model', observe)
+    seen = []
+    def handler(request):
+        text = json.loads(request.content)['messages'][0]['content']
+        seen.append(text)
+        response = raw(provider)
+        if text == 'drift':
+            response['model'] = 'wrong-mock-model'
+        return httpx.Response(200, json=response)
+    client = APIClient(provider, ledger, transport=httpx.MockTransport(handler), ledger_cleanup_seconds=3)
+    original_execute = client._execute
+    async def execute(path, body, op, cell, native):
+        if op == 'queued':
+            b_ready.set()
+            await admit_b.wait()
+        return await original_execute(path, body, op, cell, native)
+    monkeypatch.setattr(client, '_execute', execute)
+    b = asyncio.create_task(client.complete([Message('user', 'queued')], op='queued', cell='c'))
+    a = None
+    try:
+        await asyncio.wait_for(b_ready.wait(), 3)
+        a = asyncio.create_task(client.complete([Message('user', 'drift')], op='drift', cell='c'))
+        async with asyncio.timeout(3):
+            while not observation_started.is_set():
+                await asyncio.sleep(.002)
+        admit_b.set()
+        async with asyncio.timeout(3):
+            while not any(j.fn == ledger.reserve_gated and j.args[0] == 'queued' for j in client.async_ledger.jobs):
+                await asyncio.sleep(.002)
+        allow_observation.set()
+        a_result, b_result = await asyncio.gather(a, b, return_exceptions=True)
+        assert isinstance(a_result, LabError) and a_result.kind == 'model_drift'
+        assert isinstance(b_result, LabError) and b_result.kind == 'run_stopped'
+        assert seen == ['drift']
+    finally:
+        admit_b.set()
+        allow_observation.set()
+        await client.close()
+    assert ledger.stop_reason() == 'model_drift'
+    assert {attempt['op'] for attempt in ledger.attempts()} == {'drift'}
+    assert ledger.totals()['known_tokens'] == 18

@@ -289,6 +289,7 @@ class APIClient:
             raise LabError("client_closed", "API client is closing")
         owner = Operation(time.monotonic() + self.p.retry.total_seconds)
         task = asyncio.current_task()
+        initial_cancellations = task.cancelling()
         self.requests.add(task)
         token = self.ledger_owner.set(owner)
         lock = self.op_locks.setdefault(op, asyncio.Lock())
@@ -313,8 +314,12 @@ class APIClient:
             return result
         except BaseException as exc:
             interruptions = owner.interruptions
+            # A bounded cleanup waiter can defer caller cancellation and then
+            # expire with TimeoutError. Preserve external cancellation; the
+            # execution timeout context removes its own cancellation count.
+            caller_cancelled = isinstance(exc, asyncio.CancelledError) or task.cancelling() > initial_cancellations
             owner.cancel()
-            if isinstance(exc, asyncio.CancelledError):
+            if caller_cancelled:
                 err = LabError("cancelled", "Operation cancelled; possible dispatched attempts remain reserved", ambiguous=True)
             elif isinstance(exc, TimeoutError):
                 err = LabError("total_timeout", "Total operation deadline exceeded", ambiguous=True)
@@ -344,14 +349,15 @@ class APIClient:
             except (TimeoutError, LabError) as cleanup_error:
                 # No replay/parallel finish: durable running/reserved rows are the
                 # existing recovery contract when bounded reconciliation fails.
-                if owner.interruptions > interruptions:
+                if caller_cancelled or owner.interruptions > interruptions:
                     raise asyncio.CancelledError from cleanup_error
-                if not isinstance(exc, asyncio.CancelledError):
-                    raise LabError("ledger_cleanup_timeout", "Ledger cleanup did not complete; operation remains in doubt and reservations remain charged", ambiguous=True) from cleanup_error
+                raise LabError("ledger_cleanup_timeout", "Ledger cleanup deadline exceeded; outcome is in doubt to this caller and unresolved reservations remain charged", ambiguous=True) from cleanup_error
             if owner.interruptions > interruptions:
                 raise asyncio.CancelledError
-            if isinstance(exc, asyncio.CancelledError):
-                raise
+            if caller_cancelled:
+                if isinstance(exc, asyncio.CancelledError):
+                    raise
+                raise asyncio.CancelledError from exc
             if err is exc:
                 raise
             raise err from exc
@@ -469,7 +475,8 @@ class APIClient:
                     result = parse_completion(p, raw)
                     # A received response retains its identity evidence through
                     # cancellation during settlement, as well as its known usage.
-                    await self._ledger_call("observed_model", p.name, result.model, p.expected_response_model, cleanup=True)
+                    await self._ledger_call("observed_model", p.name, result.model, p.expected_response_model,
+                                            stop_on_drift=True, cleanup=True)
                     self.ledger_owner.get().check()
                     completed = True
                     return result.to_dict()
@@ -492,8 +499,6 @@ class APIClient:
                     last = LabError("transport_ambiguous", "Request or response interrupted; upstream may have processed it", True, True)
                 except LabError as err:
                     last = err
-                    if err.kind == "model_drift":
-                        await self._ledger_call("stop", "model_drift", cleanup=True)
                 finally:
                     import sys
                     active_exception = sys.exc_info()[1]

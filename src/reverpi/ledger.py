@@ -378,15 +378,32 @@ class Ledger:
                 db.execute("UPDATE providers SET blocked_until=MAX(blocked_until,?) WHERE name=?",
                            (time.time() + circuit_seconds, provider))
 
-    def observed_model(self, provider: str, model: str, expected: str | None):
+    def observed_model(self, provider: str, model: str, expected: str | None, *, stop_on_drift=False):
+        """Optionally COMMIT the run stop in the same transaction as drift detection.
+
+        The default synchronous interface retains its original refusal behavior.
+        Async dispatch opts in so another queued reservation cannot overtake the
+        stop. Raise only AFTER the stop commits; rollback never certifies a stop.
+        """
+        drift = None
         if expected and model != expected:
-            raise LabError("model_drift", "Response model differs from configured expected identity")
+            drift = LabError("model_drift", "Response model differs from configured expected identity")
+            if not stop_on_drift:
+                raise drift
         with self.db(True) as db:
-            db.execute("INSERT OR IGNORE INTO providers(name) VALUES (?)", (provider,))
-            prev = db.execute("SELECT model FROM providers WHERE name=?", (provider,)).fetchone()[0]
-            if prev and prev != model:
-                raise LabError("model_drift", "Response model changed within this run")
-            db.execute("UPDATE providers SET model=?,failures=0 WHERE name=?", (model, provider))
+            if drift is None:
+                db.execute("INSERT OR IGNORE INTO providers(name) VALUES (?)", (provider,))
+                prev = db.execute("SELECT model FROM providers WHERE name=?", (provider,)).fetchone()[0]
+                if prev and prev != model:
+                    drift = LabError("model_drift", "Response model changed within this run")
+                    if not stop_on_drift:
+                        raise drift
+            if drift is not None:
+                db.execute("INSERT OR REPLACE INTO meta VALUES ('operator_stop',?)", (canonical("model_drift"),))
+            else:
+                db.execute("UPDATE providers SET model=?,failures=0 WHERE name=?", (model, provider))
+        if drift is not None:
+            raise drift
 
     def reconcile(self, attempt: int, tokens: int, usd: float, evidence: str):
         if type(tokens) is not int or tokens < 0 or not evidence.strip():

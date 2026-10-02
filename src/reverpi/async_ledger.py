@@ -1,8 +1,9 @@
 """Private bounded, single-worker bridge for the synchronous Ledger.
 
-The loop owns dispatch. The worker owns a fresh SQLite connection per job. An
-interrupted caller retains its job until the worker reports commit or rollback;
-it never interprets cancellation of an asyncio Future as cancellation of SQLite.
+The loop owns dispatch. The worker owns a fresh SQLite connection per job. The
+bridge retains the actual job future until the worker reports commit or rollback,
+even if its caller's bounded wait has ended. A waiter timeout never certifies that
+SQLite stopped or that its transaction rolled back.
 """
 from __future__ import annotations
 
@@ -142,8 +143,19 @@ class AsyncLedger:
             raise
         while True:
             try:
-                return await asyncio.shield(job.future)
+                # Admission and an already-submitted wait share the SAME
+                # deadline. A future queued behind another owner is still owned,
+                # but cannot extend this caller's execution/cleanup allowance.
+                async with asyncio.timeout_at(deadline):
+                    return await asyncio.shield(job.future)
             except TimeoutError:
+                if job.future.done():
+                    # Completion won the timeout race: accept its actual outcome.
+                    return job.future.result()
+                # Signal just this job, never cancel its real future or another
+                # owner's transaction. The worker checks before BEGIN/COMMIT;
+                # an already committed outcome is retained for drain/close.
+                job.cancelled.set()
                 if cleanup:
                     owner.cleanup_deadline = owner.cleanup_deadline or deadline
                 raise
