@@ -206,6 +206,26 @@ class ByteStream(httpx.AsyncByteStream):
 
 
 @pytest.mark.asyncio
+async def test_stream_model_drift_persists_stop_and_blocks_next_operation(provider, ledger):
+    data = event({'id':'r', 'model':provider.model, 'choices':[]})
+    data += event({'id':'r', 'model':'different-model', 'choices':[]}) + b'data: [DONE]\n\n'
+    seen = []
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, headers={'content-type':'text/event-stream'}, stream=ByteStream(data))
+    async with APIClient(provider, ledger, transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(LabError) as drift:
+            await client.complete([Message('user','x')], op='drift', cell='c')
+        assert drift.value.kind == 'model_drift'
+        assert ledger.stop_reason() == 'model_drift'
+        with pytest.raises(LabError) as stopped:
+            await client.complete([Message('user','y')], op='later', cell='c')
+        assert stopped.value.kind == 'run_stopped'
+    assert len(seen) == 1
+    assert ledger.totals()['unknown_attempts'] == 1
+
+
+@pytest.mark.asyncio
 async def test_chat_stream_tool_fragments(provider,ledger):
     data=event({'id':'r','model':provider.model,'choices':[{'index':0,'delta':{'reasoning_content':'思考','tool_calls':[{'index':0,'id':'call_1','function':{'name':'echo','arguments':'{"n":'}}]},'finish_reason':None}]})
     data+=event({'choices':[{'index':0,'delta':{'tool_calls':[{'index':0,'function':{'arguments':'1}'}}]},'finish_reason':'tool_calls'}]})
@@ -257,8 +277,13 @@ async def test_context_admission_is_explicit_not_silent_byte_window(provider,led
 
 @pytest.mark.asyncio
 async def test_total_deadline_reserves_ambiguous(provider,ledger):
-    p=provider.model_copy(update={'retry':provider.retry.model_copy(update={'total_seconds':.02})})
-    async def hang(req):await asyncio.sleep(2)
+    # Claim/reservation now consume this same budget. Leave enough setup margin
+    # to exercise a dispatched attempt rather than a pre-dispatch expiry.
+    p=provider.model_copy(update={'retry':provider.retry.model_copy(update={'total_seconds':1})})
+    dispatched=asyncio.Event()
+    async def hang(req):
+        dispatched.set()
+        await asyncio.sleep(10)
     async with APIClient(p,ledger,transport=httpx.MockTransport(hang)) as c:
         with pytest.raises(LabError,match='deadline'):await c.complete([Message('user','x')],op='x',cell='c')
-    assert ledger.totals()['unknown_attempts']==1
+    assert dispatched.is_set() and ledger.totals()['unknown_attempts']==1

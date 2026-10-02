@@ -74,26 +74,36 @@ def test_reservation_cannot_charge_another_cell(ledger):
 
 def test_shared_rate_gate_is_atomic_across_clients(tmp_path, provider, monkeypatch):
     """Independent event loops simulate the previous check/reserve TOCTOU race."""
-    p=provider.model_copy(update={'requests_per_minute':1,'retry':provider.retry.model_copy(update={'total_seconds':.25})})
+    # This asserts atomic admission, not a 250ms deadline: asynchronous binding
+    # and claiming now consume the total budget before reservation. Stay well
+    # below the 60s rate window while allowing both clients to reach the gate.
+    p=provider.model_copy(update={'requests_per_minute':1,'retry':provider.retry.model_copy(update={'total_seconds':2})})
     budget=Budget(max_total_tokens=1000000,per_cell_tokens=1000000)
     ledger=Ledger(tmp_path/'shared.sqlite', budget)
     barrier=threading.Barrier(2)
+    start=threading.Barrier(2)
+    dispatched=[]
     old=Ledger.throttle_delay
     def split_check(self,*a,**kw):
         delay=old(self,*a,**kw)
         if delay==0: barrier.wait(timeout=3)
         return delay
     monkeypatch.setattr(Ledger,'throttle_delay',split_check)
+    def handler(request):
+        dispatched.append(request)
+        return httpx.Response(200,json=raw(p))
     def job(i):
+        start.wait(timeout=3)
         async def run():
-            async with APIClient(p,ledger,transport=httpx.MockTransport(lambda r:httpx.Response(200,json=raw(p)))) as client:
+            async with APIClient(p,ledger,transport=httpx.MockTransport(handler)) as client:
                 try:
                     await client.complete([Message('user','x')],op=f'op{i}',cell=f'cell{i}')
                     return 'complete'
                 except LabError as e: return e.kind
         return asyncio.run(run())
     with ThreadPoolExecutor(2) as pool: outcomes=list(pool.map(job,[1,2]))
-    assert outcomes.count('complete')==1
+    assert sorted(outcomes)==['complete','total_timeout']
+    assert len(dispatched)==1
     assert ledger.totals()['attempts']==1
 
 @pytest.mark.asyncio

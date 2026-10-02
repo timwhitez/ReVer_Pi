@@ -39,6 +39,59 @@ and bounded, so a search cannot silently return rewritten text.
 Unknown currency, interrupted attempts and reconciled corrections are separate states; totals are
 derived from the rows rather than accumulated in a variable that can drift.
 
+APIClient sends all request-path ledger work, including provider binding and transport audit,
+through one private worker with at most 32 admitted jobs (running plus queued). Queue backpressure,
+the operation lock, claim, rate admission and HTTP work share the original `retry.total_seconds`
+deadline. Each job opens and closes its own connection on the worker. SQLite lock admission waits
+in slices of at most 50ms; cancellation before COMMIT rolls back, while an already committed
+result stays attached to its original operation/attempt. Cancelling one request does not stop
+another request's ledger work. The synchronous CLI retains its existing Ledger interface.
+
+Accounting cleanup has an explicit two-second allowance per attempt: committed usage remains
+accounted through caller cancellation, and settlement, response-model accounting, trace and final
+operation persistence share one absolute cleanup deadline. Cancellation does not reset it. Only
+a fully reconciled attempt that permits a retry starts a new accounting allowance; ordinary retry
+work retains the original execution deadline. If that execution deadline expires during accounting,
+the request completes bounded cleanup and cannot dispatch another attempt. A caller can therefore
+take up to the cleanup allowance beyond `retry.total_seconds` while durable cleanup completes.
+Python callers may set
+`ledger_max_pending` and `ledger_cleanup_seconds` on APIClient; these are not provider YAML fields.
+
+When cleanup cannot complete, `ledger_cleanup_timeout` reports an ambiguous outcome. A cancelled
+caller still receives cancellation; this does not certify ledger reconciliation. Durable running
+operations remain `operation_in_doubt` on restart, and reserved/unknown attempts remain charged at
+their planning bound until explicit operator reconciliation. No claim or paid attempt is replayed.
+Use APIClient as an async context manager or await `close()` on its owning event loop. Close rejects
+new requests, cancels ordinary in-flight work, waits for owned accounting and actual transaction
+outcomes, joins the worker, then closes HTTP resources. A cancelled close waiter may await close
+again; its retained close task continues draining. Gateway lifespan performs this shutdown.
+
+The same absolute deadline bounds admission and waiting for an already submitted job, including
+a cleanup job queued behind another operation's SQLite lock wait. Expiry signals only that job;
+its actual future and received usage arguments stay owned by the bridge until the worker reports
+the real outcome. A queued expired job performs no writes. Received usage that could not be
+committed within the allowance remains conservatively reserved/unknown, with the operation in
+doubt; it is not reported as durable known usage. Recovery still needs external billing evidence
+and explicit reconciliation. A COMMIT that won the timeout race keeps its durable result; close
+waits for the actual future and joins even when the caller already received an ambiguous error.
+
+Request-path model observation and a model-drift stop share one SQLite transaction. The stop
+commits before the worker can process another queued reservation, and the drift error is raised
+after COMMIT. An aborted transaction never certifies that a stop was persisted. Existing requests
+already dispatched keep their usage records; stopping blocks new paid admission.
+
+SSE model changes are detected by the parser, before a model-observation transaction exists.
+The client immediately latches drift and checks this latch before reservation and again after
+an awaited reservation, so admitted but unsent work cannot dispatch while stop persistence is
+queued. The latch is set before HTTP stream close can await or be cancelled. A stop transaction
+then takes priority over trace/settlement within the same attempt's cleanup allowance, including
+when stream close was cancelled. Atomic observation drift does not enqueue another stop.
+If storage prevents the parser stop from committing in time, the caller receives an ambiguous
+cleanup error, the incomplete response keeps reserved/unknown usage, and that client continues
+to refuse new dispatch. This local latch does not certify a durable stop for other clients or a
+restart; only the actual committed ledger stop does. Already dispatched requests retain their
+accounting and are not recalled.
+
 **Budgets (`src/reverpi/config.py`)** bind token, attempt, per-cell and disk limits to a study config.
 The gateway refuses to start a dispatch that would breach them.
 

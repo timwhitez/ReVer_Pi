@@ -5,12 +5,14 @@ must explicitly reconcile the ambiguous attempt or create a NEW study generation
 """
 from __future__ import annotations
 import contextlib
+import contextvars
 import json
 import math
 import os
 import sqlite3
 import shutil
 import time
+import threading
 from pathlib import Path
 from typing import Any, Iterator
 from .config import Budget
@@ -18,6 +20,29 @@ from .errors import LabError
 from .util import canonical, seal_cache, unseal_cache
 
 NANO = 1_000_000_000
+
+
+class TransactionControl:
+    """One worker job's cooperative cancellation, never shared with another op."""
+    def __init__(self, deadline: float, cancelled: threading.Event):
+        self.deadline, self.cancelled = deadline, cancelled
+
+    def check(self):
+        if self.cancelled.is_set() or time.monotonic() >= self.deadline:
+            raise TimeoutError("Ledger transaction deadline or cancellation")
+
+
+_TRANSACTION_CONTROL: contextvars.ContextVar[TransactionControl | None] = contextvars.ContextVar(
+    "ledger_transaction_control", default=None)
+
+
+@contextlib.contextmanager
+def transaction_control(control: TransactionControl):
+    token = _TRANSACTION_CONTROL.set(control)
+    try:
+        yield
+    finally:
+        _TRANSACTION_CONTROL.reset(token)
 
 
 def nanos(usd: float) -> int:
@@ -141,21 +166,51 @@ class Ledger:
         self.bind("budget", budget.model_dump())
 
     @contextlib.contextmanager
-    def db(self, write=False) -> Iterator[sqlite3.Connection]:
-        db = sqlite3.connect(self.path, timeout=30, isolation_level=None)
+    def db(self, write=False, *, control: TransactionControl | None = None) -> Iterator[sqlite3.Connection]:
+        control = control or _TRANSACTION_CONTROL.get()
+        if control:
+            control.check()
+        db = sqlite3.connect(self.path, timeout=.05 if control else 30, isolation_level=None)
         db.row_factory = sqlite3.Row
-        db.execute("PRAGMA journal_mode=WAL")
-        db.execute("PRAGMA synchronous=FULL")
-        db.execute("PRAGMA busy_timeout=30000")
         try:
-            if write:
-                db.execute("BEGIN IMMEDIATE")
+            # Retry only admission/configuration before BEGIN. Once a transaction
+            # exists, an error rolls it back; a committed mutation is never replayed.
+            while True:
+                if control:
+                    control.check()
+                    ms = max(1, min(50, int((control.deadline - time.monotonic()) * 1000)))
+                    db.execute(f"PRAGMA busy_timeout={ms}")
+                else:
+                    db.execute("PRAGMA busy_timeout=30000")
+                try:
+                    db.execute("PRAGMA journal_mode=WAL")
+                    db.execute("PRAGMA synchronous=FULL")
+                    if write:
+                        db.execute("BEGIN IMMEDIATE")
+                    break
+                except sqlite3.OperationalError as exc:
+                    code = getattr(exc, "sqlite_errorcode", 0) & 0xff
+                    if not control or db.in_transaction or code not in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}:
+                        raise
+                    control.check()
+                    # SQLITE_LOCKED may return without using the busy handler.
+                    control.cancelled.wait(min(.005, max(0, control.deadline - time.monotonic())))
+            if control:
+                control.check()
+                db.set_progress_handler(lambda: int(control.cancelled.is_set() or time.monotonic() >= control.deadline), 1000)
             yield db
             if write:
+                if control:
+                    control.check()
                 db.execute("COMMIT")
-        except BaseException:
+        except BaseException as exc:
+            # A cancelled progress handler must not interrupt the rollback itself.
+            db.set_progress_handler(None, 0)
             if write and db.in_transaction:
                 db.execute("ROLLBACK")
+            if (control and isinstance(exc, sqlite3.OperationalError)
+                    and getattr(exc, "sqlite_errorcode", 0) & 0xff == sqlite3.SQLITE_INTERRUPT):
+                control.check()
             raise
         finally:
             db.close()
@@ -323,15 +378,32 @@ class Ledger:
                 db.execute("UPDATE providers SET blocked_until=MAX(blocked_until,?) WHERE name=?",
                            (time.time() + circuit_seconds, provider))
 
-    def observed_model(self, provider: str, model: str, expected: str | None):
+    def observed_model(self, provider: str, model: str, expected: str | None, *, stop_on_drift=False):
+        """Optionally COMMIT the run stop in the same transaction as drift detection.
+
+        The default synchronous interface retains its original refusal behavior.
+        Async dispatch opts in so another queued reservation cannot overtake the
+        stop. Raise only AFTER the stop commits; rollback never certifies a stop.
+        """
+        drift = None
         if expected and model != expected:
-            raise LabError("model_drift", "Response model differs from configured expected identity")
+            drift = LabError("model_drift", "Response model differs from configured expected identity")
+            if not stop_on_drift:
+                raise drift
         with self.db(True) as db:
-            db.execute("INSERT OR IGNORE INTO providers(name) VALUES (?)", (provider,))
-            prev = db.execute("SELECT model FROM providers WHERE name=?", (provider,)).fetchone()[0]
-            if prev and prev != model:
-                raise LabError("model_drift", "Response model changed within this run")
-            db.execute("UPDATE providers SET model=?,failures=0 WHERE name=?", (model, provider))
+            if drift is None:
+                db.execute("INSERT OR IGNORE INTO providers(name) VALUES (?)", (provider,))
+                prev = db.execute("SELECT model FROM providers WHERE name=?", (provider,)).fetchone()[0]
+                if prev and prev != model:
+                    drift = LabError("model_drift", "Response model changed within this run")
+                    if not stop_on_drift:
+                        raise drift
+            if drift is not None:
+                db.execute("INSERT OR REPLACE INTO meta VALUES ('operator_stop',?)", (canonical("model_drift"),))
+            else:
+                db.execute("UPDATE providers SET model=?,failures=0 WHERE name=?", (model, provider))
+        if drift is not None:
+            raise drift
 
     def reconcile(self, attempt: int, tokens: int, usd: float, evidence: str):
         if type(tokens) is not int or tokens < 0 or not evidence.strip():

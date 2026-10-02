@@ -3,8 +3,10 @@
 Every Provider here is an httpx.MockTransport double; usage figures are synthetic.
 """
 import asyncio
+import json
 import sqlite3
 import time
+import threading
 import httpx
 import pytest
 from reverpi.config import StudyConfig
@@ -12,7 +14,7 @@ from reverpi.errors import LabError
 from reverpi.gateway import create_app
 from reverpi.transport import APIClient, DISPATCH_GUARD
 from reverpi.protocols import Message
-from test_transport import raw
+from test_transport import raw, event
 
 
 def queued_app(provider, tmp_path, early):
@@ -206,3 +208,149 @@ async def test_refused_retry_keeps_earlier_ambiguous_attempt_ambiguous(provider,
     assert len(seen) == 1
     totals = ledger.totals()
     assert totals['attempts'] == 1 and totals['unknown_attempts'] == 1
+
+
+@pytest.mark.asyncio
+async def test_guard_rechecked_after_async_ledger_commit(provider, ledger, monkeypatch):
+    """Revocation during worker admission cannot send a just-reserved attempt."""
+    reserved, release = threading.Event(), threading.Event()
+    revoked, seen = [], []
+    original = ledger.reserve_gated
+    def delayed(*args, **kwargs):
+        value = original(*args, **kwargs)
+        reserved.set()
+        assert release.wait(2)
+        return value
+    monkeypatch.setattr(ledger, 'reserve_gated', delayed)
+    def guard():
+        if revoked:
+            raise LabError('session_revoked', 'revoked before dispatch')
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, json=raw(provider))
+    async with APIClient(provider, ledger, transport=httpx.MockTransport(handler)) as client:
+        token = DISPATCH_GUARD.set(guard)
+        try:
+            task = asyncio.create_task(client.complete([Message('user', 'x')], op='guard', cell='c'))
+        finally:
+            DISPATCH_GUARD.reset(token)
+        async with asyncio.timeout(2):
+            while not reserved.is_set():
+                await asyncio.sleep(.002)
+        revoked.append(True)
+        release.set()
+        with pytest.raises(LabError) as err:
+            await task
+    assert err.value.kind == 'session_revoked' and not err.value.ambiguous
+    assert seen == []
+    attempt = ledger.attempts()[0]
+    assert attempt['actual_tokens'] == 0 and attempt['error_kind'] == 'not_dispatched'
+
+
+@pytest.mark.asyncio
+async def test_model_drift_stop_commits_before_queued_reservation(provider, ledger, monkeypatch):
+    """A queued paid admission cannot overtake the drift observation's stop."""
+    provider = provider.model_copy(update={'concurrency': 2})
+    ledger.observed_model(provider.name, provider.model, None)
+    def duplicate_stop(*args, **kwargs):
+        raise AssertionError('Atomic observation must not enqueue a second stop')
+    monkeypatch.setattr(ledger, 'stop', duplicate_stop)
+    observation_started, allow_observation = threading.Event(), threading.Event()
+    b_ready, admit_b = asyncio.Event(), asyncio.Event()
+    original_observe = ledger.observed_model
+    def observe(*args, **kwargs):
+        observation_started.set()
+        assert allow_observation.wait(3)
+        return original_observe(*args, **kwargs)
+    monkeypatch.setattr(ledger, 'observed_model', observe)
+    seen = []
+    def handler(request):
+        text = json.loads(request.content)['messages'][0]['content']
+        seen.append(text)
+        response = raw(provider)
+        if text == 'drift':
+            response['model'] = 'wrong-mock-model'
+        return httpx.Response(200, json=response)
+    client = APIClient(provider, ledger, transport=httpx.MockTransport(handler), ledger_cleanup_seconds=3)
+    original_execute = client._execute
+    async def execute(path, body, op, cell, native):
+        if op == 'queued':
+            b_ready.set()
+            await admit_b.wait()
+        return await original_execute(path, body, op, cell, native)
+    monkeypatch.setattr(client, '_execute', execute)
+    b = asyncio.create_task(client.complete([Message('user', 'queued')], op='queued', cell='c'))
+    a = None
+    try:
+        await asyncio.wait_for(b_ready.wait(), 3)
+        a = asyncio.create_task(client.complete([Message('user', 'drift')], op='drift', cell='c'))
+        async with asyncio.timeout(3):
+            while not observation_started.is_set():
+                await asyncio.sleep(.002)
+        admit_b.set()
+        async with asyncio.timeout(3):
+            while not any(j.fn == ledger.reserve_gated and j.args[0] == 'queued' for j in client.async_ledger.jobs):
+                await asyncio.sleep(.002)
+        allow_observation.set()
+        a_result, b_result = await asyncio.gather(a, b, return_exceptions=True)
+        assert isinstance(a_result, LabError) and a_result.kind == 'model_drift'
+        assert isinstance(b_result, LabError) and b_result.kind == 'run_stopped'
+        assert seen == ['drift']
+    finally:
+        admit_b.set()
+        allow_observation.set()
+        await client.close()
+    assert ledger.stop_reason() == 'model_drift'
+    assert {attempt['op'] for attempt in ledger.attempts()} == {'drift'}
+    assert ledger.totals()['known_tokens'] == 18
+
+
+@pytest.mark.asyncio
+async def test_parser_drift_latch_blocks_already_admitted_unsent_request(provider, ledger, monkeypatch):
+    provider = provider.model_copy(update={'concurrency': 2})
+    headers_received, emit_drift = asyncio.Event(), asyncio.Event()
+    reserved, release_reserve = threading.Event(), threading.Event()
+    original_reserve = ledger.reserve_gated
+    def reserve(*args, **kwargs):
+        result = original_reserve(*args, **kwargs)
+        if args[0] == 'queued':
+            reserved.set()
+            assert release_reserve.wait(3)
+        return result
+    monkeypatch.setattr(ledger, 'reserve_gated', reserve)
+    class DriftStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            await emit_drift.wait()
+            yield event({'id':'r','model':provider.model,'choices':[]}) + event({'model':'changed','choices':[]})
+    seen = []
+    def handler(request):
+        text = json.loads(request.content)['messages'][0]['content']
+        seen.append(text)
+        if text == 'drift':
+            headers_received.set()
+            return httpx.Response(200, headers={'content-type':'text/event-stream'}, stream=DriftStream())
+        return httpx.Response(200, json=raw(provider))
+    client = APIClient(provider, ledger, transport=httpx.MockTransport(handler), ledger_cleanup_seconds=3)
+    try:
+        a = asyncio.create_task(client.complete([Message('user','drift')], op='drift', cell='c'))
+        await asyncio.wait_for(headers_received.wait(), 3)
+        b = asyncio.create_task(client.complete([Message('user','queued')], op='queued', cell='c'))
+        async with asyncio.timeout(3):
+            while not reserved.is_set():
+                await asyncio.sleep(.002)
+        emit_drift.set()
+        async with asyncio.timeout(3):
+            while not any(j.fn == ledger.stop for j in client.async_ledger.jobs):
+                await asyncio.sleep(.002)
+        assert client.model_drift_detected
+        release_reserve.set()
+        a_result, b_result = await asyncio.gather(a, b, return_exceptions=True)
+        assert isinstance(a_result, LabError) and a_result.kind == 'model_drift'
+        assert isinstance(b_result, LabError) and b_result.kind == 'run_stopped'
+        assert seen == ['drift'] and ledger.stop_reason() == 'model_drift'
+        queued = next(x for x in ledger.attempts() if x['op'] == 'queued')
+        assert queued['actual_tokens'] == 0 and queued['error_kind'] == 'not_dispatched'
+    finally:
+        emit_drift.set()
+        release_reserve.set()
+        await client.close()

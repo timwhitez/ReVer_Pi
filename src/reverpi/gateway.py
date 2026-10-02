@@ -179,6 +179,10 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
     ledger.bind("gateway_code", digest(source_manifest(Path(__file__).resolve().parents[2])))
     sessions = Sessions(run / "sessions.sqlite")
     archive = Archive(run / "archive.sqlite", study.compression)
+    # Startup consumers (including the Harbor adapter) inspect the frozen
+    # provider identity before a first completion request. Runtime APIClient
+    # request I/O is handled by its async worker.
+    ledger.bind("provider:" + provider.name, provider.model_dump())
     client = APIClient(provider, ledger, transport=transport)
     projection = (ProjectionStore(run / "projection.sqlite", study.online_projection)
                   if study.online_projection.mode != "off" else None)
