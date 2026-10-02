@@ -50,6 +50,12 @@ Examples: `configs/provider.chat.example.yaml`, `configs/provider.responses.exam
 | `recovery_chars` | 6000 | Maximum characters per recovery read |
 | `recovery_search_mode` | `head` | `match` enables literal navigation before reading |
 
+When `chars` is omitted from `/recover`, the gateway uses the smaller of 2000 and
+`recovery_chars`, for both handle reads and literal searches. Explicit lengths
+must remain within the configured cap; they are rejected rather than clipped.
+Offsets and lengths count Unicode codepoints. Both `legacy` and `split_v1` use
+this bounded default; retrieval does not verify the current workspace.
+
 ### `online_projection`
 
 | Field | Default | Meaning |

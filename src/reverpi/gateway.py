@@ -427,6 +427,11 @@ def create_app(provider: Provider, study: StudyConfig, run: Path, *, transport=N
     async def recover(body: RecoverBody, request: Request):
         state = authenticate(request)
         safe_id(body.op)
-        return archive.recover(state["id"], body.op, **body.model_dump(exclude={"op"}, exclude_none=True))
+        args = body.model_dump(exclude={"op"}, exclude_none=True)
+        # Only omission gets a session-bounded default. Explicit over-limit
+        # values still fail, and Archive hashes the actual executed span.
+        if "chars" not in body.model_fields_set:
+            args["chars"] = min(2000, study.compression.recovery_chars)
+        return archive.recover(state["id"], body.op, **args)
 
     return app
