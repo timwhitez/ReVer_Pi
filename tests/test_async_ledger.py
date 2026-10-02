@@ -15,7 +15,7 @@ from reverpi.transport import APIClient
 from reverpi.async_ledger import AsyncLedger, Operation
 from reverpi.ledger import Ledger
 from reverpi.transport_trace import record_transport_trace
-from test_transport import raw
+from test_transport import raw, ByteStream, event
 
 
 @pytest.mark.asyncio
@@ -694,3 +694,67 @@ async def test_atomic_drift_stop_committed_before_late_error_result(ledger, monk
         await worker.close()
     assert isinstance(job.future.exception(), LabError) and job.future.exception().kind == 'model_drift'
     assert ledger.stop_reason() == 'model_drift' and not worker.thread.is_alive()
+
+
+@pytest.mark.asyncio
+async def test_parser_drift_survives_cancel_during_http_stream_close(provider, ledger):
+    closing, release_close = asyncio.Event(), asyncio.Event()
+    class DriftStream(ByteStream):
+        async def aclose(self):
+            closing.set()
+            await release_close.wait()
+    data = event({'model':provider.model,'choices':[]}) + event({'model':'changed','choices':[]})
+    # Force a full read chunk so parser drift precedes EOF auto-close/flush.
+    data += b': padding ' + b'x' * 65536 + b'\n\n'
+    seen = []
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, headers={'content-type':'text/event-stream'}, stream=DriftStream(data, cut=65536))
+    client = APIClient(provider, ledger, transport=httpx.MockTransport(handler))
+    try:
+        task = asyncio.create_task(client.complete([Message('user','x')], op='drift', cell='c'))
+        await asyncio.wait_for(closing.wait(), 3)
+        assert client.model_drift_detected
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 3)
+        assert ledger.stop_reason() == 'model_drift'
+        with pytest.raises(LabError) as stopped:
+            await client.complete([Message('user','later')], op='later', cell='c')
+        assert stopped.value.kind == 'run_stopped' and len(seen) == 1
+        assert ledger.totals()['unknown_attempts'] == 1
+    finally:
+        release_close.set()
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_parser_drift_storage_timeout_retains_local_latch_and_reserved_usage(provider, ledger):
+    writer = sqlite3.connect(ledger.path, isolation_level=None)
+    class DriftStream(ByteStream):
+        async def aclose(self):
+            writer.execute('BEGIN IMMEDIATE')
+    data = event({'model':provider.model,'choices':[]}) + event({'model':'changed','choices':[]})
+    seen = []
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, headers={'content-type':'text/event-stream'}, stream=DriftStream(data))
+    client = APIClient(provider, ledger, transport=httpx.MockTransport(handler), ledger_cleanup_seconds=.15)
+    try:
+        started = time.monotonic()
+        with pytest.raises(LabError) as interrupted:
+            await client.complete([Message('user','x')], op='drift', cell='c')
+        assert interrupted.value.kind == 'ledger_cleanup_timeout'
+        assert time.monotonic() - started < .7
+        assert client.model_drift_detected and ledger.stop_reason() is None
+        attempt = ledger.attempts()[0]
+        assert attempt['state'] == 'reserved' and attempt['actual_tokens'] is None
+        writer.rollback()
+        with pytest.raises(LabError) as stopped:
+            await client.complete([Message('user','later')], op='later', cell='c')
+        assert stopped.value.kind == 'run_stopped' and len(seen) == 1
+        assert ledger.stop_reason() is None  # Local refusal never fabricates a durable stop.
+    finally:
+        writer.rollback()
+        writer.close()
+        await client.close()

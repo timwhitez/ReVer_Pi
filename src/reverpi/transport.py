@@ -216,6 +216,7 @@ class APIClient:
         self.dispatch_lock = asyncio.Lock()
         self.binding_lock = asyncio.Lock()
         self.provider_bound = False
+        self.model_drift_detected = False
         self.op_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
         self.async_ledger = AsyncLedger(ledger, max_pending=ledger_max_pending,
                                         cleanup_seconds=ledger_cleanup_seconds)
@@ -367,6 +368,12 @@ class APIClient:
             self.ledger_owner.reset(token)
             self.requests.discard(task)
 
+    def _check_dispatch(self, guard):
+        if self.model_drift_detected:
+            raise LabError("run_stopped", "This client observed model drift; new dispatch is stopped")
+        if guard is not None:
+            guard()
+
     async def _execute(self, path, body, op, cell, native):
         p = self.p
         inp = conservative_input_tokens(body)
@@ -388,9 +395,9 @@ class APIClient:
         for attempt_no in range(p.retry.max_attempts):
             async with self.sem:
                 while True:
-                    if guard is not None:
+                    if guard is not None or self.model_drift_detected:
                         try:
-                            guard()  # Refusal creates no NEW attempt; earlier attempts keep their records.
+                            self._check_dispatch(guard)  # Earlier attempts keep their records.
                         except LabError as refused:
                             if attempt_no == 0:
                                 raise
@@ -403,9 +410,9 @@ class APIClient:
                             p.requests_per_minute, p.tokens_per_minute)
                         # Worker/SQLite admission added an await. Recheck the
                         # original trusted guard before this async owner sends.
-                        if guard is not None:
+                        if guard is not None or self.model_drift_detected:
                             try:
-                                guard()
+                                self._check_dispatch(guard)
                             except LabError as refused:
                                 if aid is not None:
                                     await self._ledger_call("settle", aid, tokens=0,
@@ -424,6 +431,7 @@ class APIClient:
                 status, request_id, raw, retry_hint = None, None, None, None
                 attempt_started = time.monotonic()
                 phase, completed, transport_exception = "await_headers", False, None
+                drift_detected, drift_stop_committed = False, False
                 try:
                     async with self.http.stream("POST", p.base_url.rstrip("/") + path, json=body, headers=headers) as resp:
                         status = resp.status_code
@@ -449,7 +457,14 @@ class APIClient:
                         if "text/event-stream" in resp.headers.get("content-type", "").lower():
                             if native:
                                 raise LabError("unsupported_stream", "Standalone compaction requires a complete JSON response", ambiguous=True)
-                            raw = await consume_sse(p, resp)
+                            try:
+                                raw = await consume_sse(p, resp)
+                            except LabError as err:
+                                if err.kind == "model_drift":
+                                    # Latch before HTTP stream close can await or
+                                    # be cancelled and replace the parser error.
+                                    drift_detected = self.model_drift_detected = True
+                                raise
                         else:
                             b = bytearray()
                             async for part in resp.aiter_bytes(chunk_size=65536):
@@ -475,8 +490,15 @@ class APIClient:
                     result = parse_completion(p, raw)
                     # A received response retains its identity evidence through
                     # cancellation during settlement, as well as its known usage.
-                    await self._ledger_call("observed_model", p.name, result.model, p.expected_response_model,
-                                            stop_on_drift=True, cleanup=True)
+                    try:
+                        await self._ledger_call("observed_model", p.name, result.model, p.expected_response_model,
+                                                stop_on_drift=True, cleanup=True)
+                    except LabError as err:
+                        if err.kind == "model_drift":
+                            # This worker error is emitted only AFTER the atomic
+                            # observation/stop COMMIT. Never enqueue a second stop.
+                            drift_stop_committed = True
+                        raise
                     self.ledger_owner.get().check()
                     completed = True
                     return result.to_dict()
@@ -499,6 +521,8 @@ class APIClient:
                     last = LabError("transport_ambiguous", "Request or response interrupted; upstream may have processed it", True, True)
                 except LabError as err:
                     last = err
+                    if err.kind == "model_drift":
+                        drift_detected = self.model_drift_detected = True
                 finally:
                     import sys
                     active_exception = sys.exc_info()[1]
@@ -507,6 +531,12 @@ class APIClient:
                         owner.cleanup_deadline = owner.cleanup_deadline or time.monotonic() + self.async_ledger.cleanup_seconds
                     if transport_exception is None and active_exception is not None:
                         transport_exception = exception_signature(active_exception)
+                    if drift_detected and not drift_stop_committed:
+                        # Parser drift has no observation transaction. Persist
+                        # stop first, within this attempt's shared cleanup budget.
+                        # The local latch also refuses admitted-but-unsent work
+                        # if storage cannot COMMIT before that budget expires.
+                        await self._ledger_call("stop", "model_drift", cleanup=True)
                     await self._ledger_call(record_transport_trace, self.ledger, attempt_id=aid, phase=phase,
                         elapsed_seconds=time.monotonic()-attempt_started, status=status,
                         complete=completed, exception=transport_exception,

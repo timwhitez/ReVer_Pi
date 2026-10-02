@@ -80,6 +80,18 @@ commits before the worker can process another queued reservation, and the drift 
 after COMMIT. An aborted transaction never certifies that a stop was persisted. Existing requests
 already dispatched keep their usage records; stopping blocks new paid admission.
 
+SSE model changes are detected by the parser, before a model-observation transaction exists.
+The client immediately latches drift and checks this latch before reservation and again after
+an awaited reservation, so admitted but unsent work cannot dispatch while stop persistence is
+queued. The latch is set before HTTP stream close can await or be cancelled. A stop transaction
+then takes priority over trace/settlement within the same attempt's cleanup allowance, including
+when stream close was cancelled. Atomic observation drift does not enqueue another stop.
+If storage prevents the parser stop from committing in time, the caller receives an ambiguous
+cleanup error, the incomplete response keeps reserved/unknown usage, and that client continues
+to refuse new dispatch. This local latch does not certify a durable stop for other clients or a
+restart; only the actual committed ledger stop does. Already dispatched requests retain their
+accounting and are not recalled.
+
 **Budgets (`src/reverpi/config.py`)** bind token, attempt, per-cell and disk limits to a study config.
 The gateway refuses to start a dispatch that would breach them.
 

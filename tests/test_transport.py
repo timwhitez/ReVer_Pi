@@ -206,6 +206,26 @@ class ByteStream(httpx.AsyncByteStream):
 
 
 @pytest.mark.asyncio
+async def test_stream_model_drift_persists_stop_and_blocks_next_operation(provider, ledger):
+    data = event({'id':'r', 'model':provider.model, 'choices':[]})
+    data += event({'id':'r', 'model':'different-model', 'choices':[]}) + b'data: [DONE]\n\n'
+    seen = []
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, headers={'content-type':'text/event-stream'}, stream=ByteStream(data))
+    async with APIClient(provider, ledger, transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(LabError) as drift:
+            await client.complete([Message('user','x')], op='drift', cell='c')
+        assert drift.value.kind == 'model_drift'
+        assert ledger.stop_reason() == 'model_drift'
+        with pytest.raises(LabError) as stopped:
+            await client.complete([Message('user','y')], op='later', cell='c')
+        assert stopped.value.kind == 'run_stopped'
+    assert len(seen) == 1
+    assert ledger.totals()['unknown_attempts'] == 1
+
+
+@pytest.mark.asyncio
 async def test_chat_stream_tool_fragments(provider,ledger):
     data=event({'id':'r','model':provider.model,'choices':[{'index':0,'delta':{'reasoning_content':'思考','tool_calls':[{'index':0,'id':'call_1','function':{'name':'echo','arguments':'{"n":'}}]},'finish_reason':None}]})
     data+=event({'choices':[{'index':0,'delta':{'tool_calls':[{'index':0,'function':{'arguments':'1}'}}]},'finish_reason':'tool_calls'}]})
