@@ -147,8 +147,7 @@ async def case_run(root:Path,out:Path,protocol:str,condition:str,pressure:str)->
     proc=None;stderr_task=None
     try:
         with server(app) as url:
-            argv=command(node,cli,root/'pi/src/index.ts',case/'session.jsonl',case/'unused.txt',provider.model,'low')
-            argv[argv.index('json')]='rpc';argv=argv[:-2]
+            argv=command(node,cli,root/'pi/src/index.ts',case/'session.jsonl',provider.model,'low',mode='rpc')
             env=isolated_env(case,url,token,40,40)
             # Preserve the wrapper's anti-accidental-egress guard in the Pi child.
             for key in ('LD_PRELOAD','REVER_OFFLINE_GUARD_LOG'):

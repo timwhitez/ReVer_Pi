@@ -127,8 +127,7 @@ async def phase_run(out: Path, phase: str, plan: PairedPlan, files: dict, prompt
     proc = None; drain_task = None
     try:
         with paired_server(app) as url:
-            argv = command(node, cli, ROOT/'pi/src/index.ts', folder/'session.jsonl', folder/'unused', plan.provider.model, 'low')
-            argv[argv.index('json')] = 'rpc'; argv = argv[:-2]
+            argv = command(node, cli, ROOT/'pi/src/index.ts', folder/'session.jsonl', plan.provider.model, 'low', mode='rpc')
             argv += ['--tools', ','.join(paired_tools(plan)), '--extension', str(ROOT/'pi/src/paired-readonly.ts')]
             env = isolated_env(folder, url, token, 30, plan.max_prefix_requests+plan.max_suffix_requests+3)
             env.update(REVER_PAIRED_WORKSPACE=str(out/'workspace'), REVER_PAIRED_FILES=canonical(list(files)), PI_TELEMETRY='0')

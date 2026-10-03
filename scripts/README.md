@@ -19,3 +19,9 @@ The remaining scripts (`audit_*.py`, `*_smoke.py`, `*_tamper.py`, `paired_*`, `i
 `flash_workflow.py`, `net_client.mjs`, `replay_activation.mjs`, …) belong to the study runners in
 `research/`. Some are imported by `research/s4/reverpi_sources/runner.py`, which is why they live
 here rather than under `research/`; they are not part of the installed package.
+
+`native_compaction_smoke.py`, `online_projection_smoke.py`, and `paired_prefix_canary.py`
+are current diagnostic consumers used by the verification entry points above. They
+use the current launcher's explicit RPC mode. Historical source snapshots and
+recorded results under `research/` retain their original interfaces and bytes;
+these commands produce new diagnostic artifacts and do not revalidate old runs.
