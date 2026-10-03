@@ -5,6 +5,7 @@ import json
 import sqlite3
 import threading
 import time
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -13,6 +14,7 @@ from reverpi.errors import LabError
 from reverpi.protocols import Message
 from reverpi.transport import APIClient
 from reverpi.async_ledger import AsyncLedger, Operation
+import reverpi.async_ledger as async_ledger_module
 from reverpi.ledger import Ledger
 from reverpi.transport_trace import record_transport_trace
 from test_transport import raw, ByteStream, event
@@ -729,10 +731,22 @@ async def test_parser_drift_survives_cancel_during_http_stream_close(provider, l
 
 
 @pytest.mark.asyncio
-async def test_parser_drift_storage_timeout_retains_local_latch_and_reserved_usage(provider, ledger):
+@pytest.mark.parametrize('slow_phase', ['none', 'claim', 'stream_close'])
+async def test_parser_drift_storage_timeout_retains_local_latch_and_reserved_usage(provider, ledger, monkeypatch, slow_phase):
+    # Both delays consume the unchanged 10-second operation budget, before
+    # the first cleanup job starts its separate 0.15-second allowance.
+    if slow_phase == 'claim':
+        original_claim = ledger.claim
+        def delayed_claim(*args, **kwargs):
+            if args[0] == 'drift':
+                time.sleep(.65)
+            return original_claim(*args, **kwargs)
+        monkeypatch.setattr(ledger, 'claim', delayed_claim)
     writer = sqlite3.connect(ledger.path, isolation_level=None)
     class DriftStream(ByteStream):
         async def aclose(self):
+            if slow_phase == 'stream_close':
+                await asyncio.sleep(.65)
             writer.execute('BEGIN IMMEDIATE')
     data = event({'model':provider.model,'choices':[]}) + event({'model':'changed','choices':[]})
     seen = []
@@ -740,21 +754,72 @@ async def test_parser_drift_storage_timeout_retains_local_latch_and_reserved_usa
         seen.append(request)
         return httpx.Response(200, headers={'content-type':'text/event-stream'}, stream=DriftStream(data))
     client = APIClient(provider, ledger, transport=httpx.MockTransport(handler), ledger_cleanup_seconds=.15)
+    clock_reads, deadlines = [], []
+    drift_owner, cleanup_clock_start, cleanup_state, cleanup_started = None, None, None, None
+    def read_clock():
+        value = time.monotonic()
+        clock_reads.append(value)
+        return value
+    # Observe the bridge's real clock; global time and the loop clock stay intact.
+    monkeypatch.setattr(async_ledger_module, 'time', SimpleNamespace(monotonic=read_clock))
+    original_call, original_drain = client.async_ledger.call, client.async_ledger.drain
+    async def observe_call(owner, fn, *args, cleanup=False, **kwargs):
+        nonlocal drift_owner, cleanup_clock_start, cleanup_state, cleanup_started
+        if cleanup and fn == 'stop' and drift_owner is None:
+            # Short SSE reaches EOF/close before its buffered parser detects drift.
+            # The first stop call is the actual already-latched cleanup boundary.
+            cleanup_state = client.model_drift_detected, writer.in_transaction
+            drift_owner, cleanup_clock_start = owner, len(clock_reads)
+            cleanup_started = time.monotonic()
+        try:
+            return await original_call(owner, fn, *args, cleanup=cleanup, **kwargs)
+        finally:
+            if cleanup and owner is drift_owner:
+                deadlines.append(owner.cleanup_deadline)
+    async def observe_drain(owner):
+        if owner is drift_owner:
+            deadlines.append(owner.cleanup_deadline)
+        try:
+            return await original_drain(owner)
+        finally:
+            if owner is drift_owner:
+                deadlines.append(owner.cleanup_deadline)
+    monkeypatch.setattr(client.async_ledger, 'call', observe_call)
+    monkeypatch.setattr(client.async_ledger, 'drain', observe_drain)
     try:
-        started = time.monotonic()
         with pytest.raises(LabError) as interrupted:
             await client.complete([Message('user','x')], op='drift', cell='c')
-        assert interrupted.value.kind == 'ledger_cleanup_timeout'
-        assert time.monotonic() - started < .7
+        assert interrupted.value.kind == 'ledger_cleanup_timeout' and interrupted.value.ambiguous
+        assert cleanup_state == (True, True)
+        assert time.monotonic() - cleanup_started < .7
+        assert writer.in_transaction  # Caller returned without waiting for lock release.
+        deadline = drift_owner.cleanup_deadline
+        # Check the actual shared budget, rather than including valid business
+        # latency. Loop responsiveness is covered by the heartbeat tests above.
+        assert any(deadline == tick + .15 for tick in clock_reads[cleanup_clock_start:])
+        assert deadlines and all(value == deadline for value in deadlines)
+        assert time.monotonic() >= deadline  # Real expiry, not an early synthetic error.
+        cleanup_jobs = [job for job in drift_owner.jobs if job.cleanup]
+        assert cleanup_jobs and all(job.deadline == deadline for job in cleanup_jobs)
+        assert all(job.deadline == drift_owner.deadline for job in drift_owner.jobs if not job.cleanup)
         assert client.model_drift_detected and ledger.stop_reason() is None
         attempt = ledger.attempts()[0]
         assert attempt['state'] == 'reserved' and attempt['actual_tokens'] is None
+        assert ledger.totals()['unknown_attempts'] == 1
+        assert ledger.totals()['accounted_tokens'] == attempt['reserve_tokens']
         writer.rollback()
         with pytest.raises(LabError) as stopped:
             await client.complete([Message('user','later')], op='later', cell='c')
         assert stopped.value.kind == 'run_stopped' and len(seen) == 1
         assert ledger.stop_reason() is None  # Local refusal never fabricates a durable stop.
+        with ledger.db() as db:
+            payload = db.execute("SELECT payload_sha FROM operations WHERE op='drift'").fetchone()[0]
+        with pytest.raises(LabError, match='in_doubt'):
+            Ledger.open_existing(ledger.path).claim('drift', payload, 'c')
     finally:
         writer.rollback()
         writer.close()
         await client.close()
+    assert all(job.future.done() and not job.future.cancelled() and
+               isinstance(job.future.exception(), TimeoutError) for job in cleanup_jobs)
+    assert not client.async_ledger.thread.is_alive()
