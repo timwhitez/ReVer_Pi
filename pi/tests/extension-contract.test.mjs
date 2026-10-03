@@ -15,6 +15,7 @@ const transformed=source.replace(/import type \{ ExtensionAPI \} from "@earendil
  .replace(/import \{ createAssistantMessageEventStream, type AssistantMessage \} from "@earendil-works\/pi-ai";\n/,'')
  .replace(/import \{ Type \} from "typebox";\n/,'')
  .replace('"./core.ts"',JSON.stringify(new URL('../src/core.ts',import.meta.url).href))
+ .replace('"./prompt-transport.ts"',JSON.stringify(new URL('../src/prompt-transport.ts',import.meta.url).href))
  .replace('"./revalidation-extension.ts"',JSON.stringify(new URL('../src/revalidation-extension.ts',import.meta.url).href));
 const code=ts.transpileModule(harnessPrelude+transformed,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
 const extension=(await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'))).default;

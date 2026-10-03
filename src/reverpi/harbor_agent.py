@@ -17,7 +17,7 @@ from harbor.agents.base import BaseAgent
 from harbor.environments.base import BaseEnvironment
 from harbor.models.agent.context import AgentContext
 from .gateway import Sessions
-from .launcher import command, settings
+from .launcher import command, settings, prompt_input
 from .ledger import Ledger
 from .protocols import usage_parts
 from .config import Budget
@@ -95,18 +95,22 @@ class ReVerPiAgent(BaseAgent):
         status={"method":self.method,"task_instruction_sha":digest(instruction),"status":"running","official_reward":None}
         atomic_write(self.logs_dir/"reverpi_runtime.json",canonical(status))
         try:
+            encoded_instruction=prompt_input(instruction)
             with tempfile.TemporaryDirectory() as folder:
                 prompt=Path(folder)/"prompt.txt";atomic_write(prompt,instruction)
                 await environment.upload_file(str(prompt),runtime+"/prompt.txt")
+                encoded=Path(folder)/"prompt-input.json";atomic_write(encoded,encoded_instruction)
+                await environment.upload_file(str(encoded),runtime+"/prompt-input.json")
             worker=runtime+"/reverpi-worker"
             argv=command(worker+"/node/bin/node",worker+"/pi/node_modules/@earendil-works/pi-coding-agent/dist/cli.js",
-                         worker+"/pi/src/index.ts",runtime+"/logs/session.jsonl",runtime+"/prompt.txt",self.profile["model"],self.profile["effort"])
+                         worker+"/pi/src/index.ts",runtime+"/logs/session.jsonl",self.profile["model"],self.profile["effort"])
             env={"HOME":runtime+"/home","PI_CODING_AGENT_DIR":runtime+"/agent-config","PI_OFFLINE":"1",
                  "REVER_GATEWAY_URL":self.gateway_url,"REVER_SESSION_TOKEN":self.token,
                  "REVER_ALLOW_PRIVATE_HTTP":"1","REVER_MAX_TOOLS":str(self.max_tools),"REVER_MAX_TURNS":str(self.max_turns),
-                 "PATH":worker+"/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","NO_COLOR":"1"}
+                 "PATH":worker+"/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","NO_COLOR":"1",
+                 "REVER_PROMPT_TRANSPORT":"json_v1"}
             # No verifier or gold is uploaded. Harbor's verifier remains the authority.
-            result=await environment.exec("ulimit -f 204800; "+" ".join(map(q,argv))+f" >{q(runtime+'/logs/events.jsonl')} 2>{q(runtime+'/logs/stderr.log')}",
+            result=await environment.exec("ulimit -f 204800; "+" ".join(map(q,argv))+f" <{q(runtime+'/prompt-input.json')} >{q(runtime+'/logs/events.jsonl')} 2>{q(runtime+'/logs/stderr.log')}",
                                           env=env,timeout_sec=self.wall_seconds)
             status.update(status="process_exited",return_code=result.return_code)
         except BaseException as err:

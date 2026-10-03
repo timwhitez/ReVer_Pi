@@ -54,10 +54,18 @@ def settings(effort: str, max_output_tokens: int, context_window: int = 131072):
             "compaction":{"enabled":True,"reserveTokens":reserve,"keepRecentTokens":keep}}
 
 
-def command(node, cli, extension, session_path, prompt_path, model, effort):
-    return [str(node),str(cli),"--offline","--mode","json","--provider","rever-gateway","--model",model,
+def command(node, cli, extension, session_path, model, effort, *, mode="json"):
+    if mode not in {"json", "rpc"}:raise ValueError("Unsupported Pi launch mode")
+    argv = [str(node),str(cli),"--offline","--mode",mode,"--provider","rever-gateway","--model",model,
             "--thinking",effort,"--session",str(session_path),"--no-extensions","--no-skills","--no-prompt-templates",
-            "--no-themes","--no-context-files","--no-approve","--extension",str(extension),"--print","@"+str(prompt_path)]
+            "--no-themes","--no-context-files","--no-approve","--extension",str(extension)]
+    return argv + (["--print"] if mode == "json" else [])
+
+
+def prompt_input(task: str) -> str:
+    if not task.strip() or len(task.encode("utf-8")) > 1_000_000:
+        raise ValueError("Task prompt empty or too large")
+    return canonical({"schema": 1, "prompt": task})
 
 
 def isolated_env(out: Path, gateway: str, token: str, max_tools: int, max_turns: int, private_http=False):
@@ -120,8 +128,8 @@ async def launch(root: Path,cwd: Path,prompt: Path,out: Path,gateway: str,token_
         raise ValueError("Task workspace must be separate from the research code, keys and gold")
     node,cli,nversion,pversion=pi_paths(root)
     verifier_env, verifier_identity = verifier_environment(root,cwd,verifier_registry,verifier_registry_sha,max_revalidations)
-    task=prompt.read_text(encoding="utf-8")
-    if not task.strip() or len(task.encode())>1_000_000:raise ValueError("Task prompt empty or too large")
+    task=prompt.read_bytes().decode("utf-8")
+    encoded_task=prompt_input(task)
     token=token_file.read_text().strip()
     out.mkdir(parents=True,exist_ok=True,mode=0o700)
     with process_lock(out/"writer.lock"):
@@ -135,11 +143,13 @@ async def launch(root: Path,cwd: Path,prompt: Path,out: Path,gateway: str,token_
         (out/"home").mkdir(mode=0o700);(out/"agent-config").mkdir(mode=0o700)
         atomic_write(out/"agent-config/settings.json",canonical(settings(info["effort"],info["max_output_tokens"],info["context_window"])))
         atomic_write(out/"prompt.txt",task)
+        atomic_write(out/"prompt-input.json",encoded_task)
         state={"status":"starting","task_sha":digest(task),"method":info["method"],"model":info["model"],
                "effort":info["effort"],"node":nversion,"pi":pversion,"source_sha":digest(source_manifest(root)),
                "workspace":str(cwd),"revalidation_capability":verifier_identity,"official_task_success":None,"mock_provider":info["mock"],"started":time.time()}
         atomic_write(status_path,canonical(state))
         env=isolated_env(out,gateway,token,max_tools,max_turns,private_http)
+        env["REVER_PROMPT_TRANSPORT"]="json_v1"
         env.update(verifier_env)
         proc=None;tasks=[];events={"agent_end":False,"model_error":False,"invalid_json_lines":0}
         async def drain(pipe,target,parse=False):
@@ -164,8 +174,9 @@ async def launch(root: Path,cwd: Path,prompt: Path,out: Path,gateway: str,token_
                     if len(buffer)>32*1024*1024:raise LabError("event_quota","Native event exceeds line limit")
                 if parse and buffer.strip():events["invalid_json_lines"]+=1
         try:
-            proc=await asyncio.create_subprocess_exec(*command(node,cli,root/"pi/src/index.ts",out/"session.jsonl",out/"prompt.txt",info["model"],info["effort"]),
-                cwd=cwd,env=env,stdin=asyncio.subprocess.DEVNULL,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,start_new_session=True)
+            with (out/"prompt-input.json").open("rb") as task_input:
+                proc=await asyncio.create_subprocess_exec(*command(node,cli,root/"pi/src/index.ts",out/"session.jsonl",info["model"],info["effort"]),
+                    cwd=cwd,env=env,stdin=task_input,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,start_new_session=True)
             state.update(status="running",pid=proc.pid);atomic_write(status_path,canonical(state))
             tasks=[asyncio.create_task(drain(proc.stdout,out/"events.jsonl",True)),asyncio.create_task(drain(proc.stderr,out/"stderr.log")),asyncio.create_task(proc.wait())]
             await asyncio.wait_for(asyncio.gather(*tasks),wall_seconds)

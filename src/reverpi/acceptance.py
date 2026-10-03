@@ -126,8 +126,7 @@ async def native_acceptance(root:Path, gateway_run:Path, gateway_url:str, out:Pa
                  'recovery_verified':False};proc=None;stderr_task=None
             try:
                 # request /session is authenticated in the extension; no supplier key enters this process.
-                argv=command(node,cli,root/'pi/src/index.ts',folder/'session.jsonl',folder/'unused.txt',profile['model'],profile['effort'])
-                argv[argv.index('json')]='rpc';argv=argv[:-2] # remove --print @prompt
+                argv=command(node,cli,root/'pi/src/index.ts',folder/'session.jsonl',profile['model'],profile['effort'],mode='rpc')
                 proc=await asyncio.create_subprocess_exec(*argv,cwd=workspace,env=isolated_env(folder,gateway_url,token,12,12,private_http),
                     stdin=asyncio.subprocess.PIPE,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,start_new_session=True,limit=8*1024**2)
                 with (folder/'rpc.jsonl').open('wb') as log,(folder/'stderr.log').open('wb') as errlog:

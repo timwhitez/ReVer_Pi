@@ -122,6 +122,13 @@ receipt cannot mint a new one.
 - **No evidence rewriting.** Archive reads are exact and excerpts are labelled; a summarising method
   is a different method, not a different view of the same bytes.
 
+Native print tasks retain their exact UTF-8 text in `prompt.txt` and pass a
+  one-shot JSON envelope through stdin. The extension's opted-in public input
+  hook restores the text without Pi's `@file` path header or stdin whitespace
+  trimming. Harbor uses the same transport; RPC acceptance remains ordinary RPC.
+  This removes unsolicited task-file metadata, not filesystem access. Cwd and
+  credential scrubbing do not isolate neighboring files or provide a sandbox.
+
 ## What this is not
 
 - Not a sandbox: tools run with the privileges of the Pi process.
