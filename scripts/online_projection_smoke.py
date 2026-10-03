@@ -104,8 +104,7 @@ async def case_run(out:Path,protocol:str,condition:str,pressure:str):
          'native_compaction_commit':False,'prompt_sha':digest(PROMPT)}
     try:
         with server(app) as url:
-            argv=command(node,cli,ROOT/'pi/src/index.ts',case/'session.jsonl',case/'unused.txt',provider.model,'low')
-            argv[argv.index('json')]='rpc';argv=argv[:-2]
+            argv=command(node,cli,ROOT/'pi/src/index.ts',case/'session.jsonl',provider.model,'low',mode='rpc')
             env=isolated_env(case,url,token,12,14)
             for key in ('LD_PRELOAD','REVER_OFFLINE_GUARD_LOG'):
                 if key in os.environ:env[key]=os.environ[key]

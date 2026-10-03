@@ -5,6 +5,7 @@ import { createAssistantMessageEventStream, type AssistantMessage } from "@earen
 import { Type } from "typebox";
 import { randomUUID } from "node:crypto";
 import registerRevalidation from "./revalidation-extension.ts";
+import { registerPromptTransport } from "./prompt-transport.ts";
 import { API, PROVIDER, canonicalMessages, causeChain, makeEnvelope, observationMetadata, recordsFromMessages, safeGateway, sha, usage, type Obj } from "./core.ts";
 
 /** Pi marks a tool result as failed only when execute() throws; a returned
@@ -20,6 +21,11 @@ export default async function extension(pi: ExtensionAPI) {
   const token = process.env.REVER_SESSION_TOKEN;
   if (!token) throw new Error("REVER_SESSION_TOKEN is required (not the upstream Provider key)");
   let fatal: string | null = null;
+  registerPromptTransport(pi, kind => {
+    fatal = kind;
+    process.exitCode = 1;
+    process.stderr.write(`ReVer halted: ${kind}\n`);
+  });
   let revision = 0, workspaceEpoch = 0, toolCount = 0, turns = 0;
   let session: Obj;
   const dispatchEpoch = new Map<string, number>();

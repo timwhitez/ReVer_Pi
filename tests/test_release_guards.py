@@ -52,22 +52,61 @@ async def test_harbor_adapter_setup_run_and_revoke_with_explicit_doubles(tmp_pat
     root=Path(__file__).resolve().parents[1]
     Path(str(worker)+'.json').write_text(canonical({'archive_sha256':bytes_digest(worker.read_bytes()),'source_sha':digest(source_manifest(root))}))
     class Env:
-        def __init__(self):self.uploads=[];self.commands=[];self.envs=[]
-        async def upload_file(self,a,b):self.uploads.append((a,b))
+        def __init__(self):self.uploads=[];self.commands=[];self.envs=[];self.contents={}
+        async def upload_file(self,a,b):self.uploads.append((a,b));self.contents[b]=Path(a).read_bytes()
         async def download_dir(self,a,b):return None
         async def exec(self,command,env=None,timeout_sec=None):
             self.commands.append(command);self.envs.append(env)
             return SimpleNamespace(return_code=0,stdout='v22.19.0',stderr='')
     e=Env();context=SimpleNamespace();agent=harbor_double(logs_dir=tmp_path/'logs',gateway_run=str(tmp_path/'gateway'),gateway_url='http://gateway:8765',worker_archive=str(worker),method='mask',cell_id='contract-cell')
+    # Exercise shell quoting in the consumer without claiming a real container.
+    agent.runtime="/tmp/synthetic runtime with 'quote"
     await agent.setup(e)
-    await agent.run('Fix the owned test task.',e,context)
+    instruction="\t\nFix the owned 中文😀 task.\r\n@literal --not-an-option  "
+    await agent.run(instruction,e,context)
     assert context.cost_usd is None
     runtime=json.loads((tmp_path/'logs/reverpi_runtime.json').read_text())
     assert runtime['status']=='process_exited' and runtime['official_reward'] is None
     assert any(x and 'REVER_SESSION_TOKEN' in x and 'REVER_API_KEY' not in x for x in e.envs)
     assert all('REVER_API_KEY' not in x for x in e.envs if x)
+    import shlex
+    assert e.contents[agent.runtime+'/prompt.txt'] == instruction.encode('utf-8')
+    assert json.loads(e.contents[agent.runtime+'/prompt-input.json']) == {'schema':1,'prompt':instruction}
+    run=e.commands[-1]
+    assert '<'+shlex.quote(agent.runtime+'/prompt-input.json') in run
+    assert ' --print ' in run and '@'+agent.runtime not in run and instruction not in run
+    assert e.envs[-1]['REVER_PROMPT_TRANSPORT']=='json_v1'
     with pytest.raises(RuntimeError,match='replayed'):await agent.run('x',e,context)
     await app.state.client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('instruction', ['', 'x'*1000001], ids=['empty', 'over-limit'])
+async def test_harbor_invalid_instruction_revokes_without_replay(tmp_path, provider, harbor_double, instruction):
+    from reverpi.util import source_manifest
+    from reverpi.errors import LabError
+    app=create_app(provider,StudyConfig(methods=['mask']),tmp_path/'gateway')
+    worker=tmp_path/'worker.tgz';worker.write_bytes(b'contract-double-only')
+    root=Path(__file__).resolve().parents[1]
+    Path(str(worker)+'.json').write_text(canonical({'archive_sha256':bytes_digest(worker.read_bytes()),'source_sha':digest(source_manifest(root))}))
+    class Env:
+        executed=False
+        async def upload_file(self,a,b):pass
+        async def exec(self,command,env=None,timeout_sec=None):
+            if env:self.executed=True
+            return SimpleNamespace(return_code=0,stdout='v22',stderr='')
+        async def download_dir(self,a,b):return None
+    env=Env();agent=harbor_double(logs_dir=tmp_path/'logs',gateway_run=str(tmp_path/'gateway'),
+                                 gateway_url='http://gateway:8765',worker_archive=str(worker),method='mask')
+    try:
+        await agent.setup(env)
+        with pytest.raises(ValueError,match='prompt empty or too large'):
+            await agent.run(instruction,env,SimpleNamespace())
+        assert agent.started and not env.executed and app.state.ledger.totals()['attempts']==0
+        with pytest.raises(LabError):agent.sessions.auth(agent.token)
+        with pytest.raises(RuntimeError,match='replayed'):await agent.run('valid retry',env,SimpleNamespace())
+        assert json.loads((tmp_path/'logs/reverpi_runtime.json').read_text())['status']=='interrupted_or_failed'
+    finally:await app.state.client.close()
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('execution_error,collection_error',[('timeout',None),('timeout','io'),('timeout','hang'),('cancel',None),(None,'io'),(None,'cancel')])
